@@ -247,14 +247,19 @@ struct IslandPanelView: View {
                 let physicalNotchWidth: CGFloat = targetOverlayScreen?.notchSize.width ?? 180
                 return 44 + physicalNotchWidth + 44
             } else {
-                let glyphW: CGFloat = 24
+                let activeModule = model.scheduler.activeModule
+                let leftWidth: CGFloat = activeModule?.id == "system_telemetry" ? 48 : 24
+                let rightWidth: CGFloat = activeModule?.id == "system_telemetry" ? 44 : 0
+                
+                let glyphW: CGFloat = activeModule != nil ? leftWidth : 24
                 let label = isExternalDisplayPlacement ? model.islandClosedLabel() : nil
                 let labelW = label.map { V6CenterLabelView.intrinsicWidth(of: $0) } ?? 0
+                
                 let rightSlot = model.islandClosedRightSlotContent()
-                let rightW = rightSlot.map { V6RightSlotView.intrinsicWidth(of: $0) } ?? 0
+                let rightW = (activeModule != nil && rightWidth > 0) ? rightWidth : (rightSlot.map { V6RightSlotView.intrinsicWidth(of: $0) } ?? 0)
                 
                 let labelBlock = (label == nil ? 0 : 6 + labelW)
-                let rightBlock = (rightSlot == nil ? 0 : 6 + rightW)
+                let rightBlock = ((rightSlot == nil && (activeModule == nil || rightWidth == 0)) ? 0 : 6 + rightW)
                 let pad = closedNotchHeight / 2
                 let intrinsic = pad * 2 + glyphW + labelBlock + rightBlock
                 return max(70, intrinsic)
@@ -266,7 +271,7 @@ struct IslandPanelView: View {
                 // 共享的黑色磨砂玻璃背景底壳，随 notchStatus 状态非线性平滑形变
                 let currentBottomRadius: CGFloat = usesOpenedVisualState ? NotchShape.openedBottomRadius : 11
                 let currentShape = OpenedIslandSurfaceShape(
-                    topProfile: usesNotchAwareOpenedHeader ? .notch : .topBar,
+                    topProfile: (usesOpenedVisualState && usesNotchAwareOpenedHeader) ? .notch : .topBar,
                     bottomCornerRadius: currentBottomRadius
                 )
                 let currentWidth = usesOpenedVisualState ? openedWidth : closedWidth
@@ -308,6 +313,8 @@ struct IslandPanelView: View {
                 }
 
                 v6ClosedSurface()
+                    .frame(width: currentWidth, height: currentHeight)
+                    .clipShape(currentShape)
                     .opacity(usesOpenedVisualState ? 0 : 1)
                     .scaleEffect(usesOpenedVisualState ? 1.12 : 1.0, anchor: .top)
                     .offset(y: usesOpenedVisualState ? 8 : 0)
