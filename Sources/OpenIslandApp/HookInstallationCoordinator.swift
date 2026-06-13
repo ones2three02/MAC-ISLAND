@@ -24,6 +24,8 @@ final class HookInstallationCoordinator {
     var kimiHookStatus: KimiHookInstallationStatus?
     var claudeStatusLineStatus: ClaudeStatusLineInstallationStatus?
     var claudeUsageSnapshot: ClaudeUsageSnapshot?
+    var antigravityStatusLineStatus: AntigravityStatusLineInstallationStatus?
+    var antigravityUsageSnapshot: AntigravityUsageSnapshot?
     var codexUsageSnapshot: CodexUsageSnapshot?
     var hooksBinaryURL: URL?
     var isCodexSetupBusy = false
@@ -37,6 +39,7 @@ final class HookInstallationCoordinator {
     var isGeminiHookSetupBusy = false
     var isKimiHookSetupBusy = false
     var isClaudeUsageSetupBusy = false
+    var isAntigravityUsageSetupBusy = false
 
     @ObservationIgnored
     var onStatusMessage: ((String) -> Void)?
@@ -90,8 +93,16 @@ final class HookInstallationCoordinator {
         ClaudeStatusLineInstallationManager()
     }
 
+    /// Computed so it always reflects the latest `AntigravityConfigDirectory` setting.
+    private var antigravityStatusLineInstallationManager: AntigravityStatusLineInstallationManager {
+        AntigravityStatusLineInstallationManager()
+    }
+
     @ObservationIgnored
     private var claudeUsageMonitorTask: Task<Void, Never>?
+
+    @ObservationIgnored
+    private var antigravityUsageMonitorTask: Task<Void, Never>?
 
     @ObservationIgnored
     private var codexUsageMonitorTask: Task<Void, Never>?
@@ -147,6 +158,10 @@ final class HookInstallationCoordinator {
 
     var claudeUsageInstalled: Bool {
         claudeStatusLineStatus?.managedStatusLineInstalled == true
+    }
+
+    var antigravityUsageInstalled: Bool {
+        antigravityStatusLineStatus?.managedStatusLineInstalled == true
     }
 
     var claudeHookStatusTitle: String {
@@ -229,6 +244,67 @@ final class HookInstallationCoordinator {
 
     var claudeUsageSummaryText: String? {
         guard let snapshot = claudeUsageSnapshot else {
+            return nil
+        }
+
+        var components: [String] = []
+        if let fiveHour = snapshot.fiveHour {
+            components.append("5h \(fiveHour.roundedUsedPercentage)%")
+        }
+        if let sevenDay = snapshot.sevenDay {
+            components.append("7d \(sevenDay.roundedUsedPercentage)%")
+        }
+        if let cachedAt = snapshot.cachedAt {
+            components.append("updated \(relativeTimestampFormatter.localizedString(for: cachedAt, relativeTo: .now))")
+        }
+        return components.isEmpty ? nil : components.joined(separator: " · ")
+    }
+
+    var antigravityUsageStatusTitle: String {
+        guard let status = antigravityStatusLineStatus else {
+            return "Antigravity usage status unavailable"
+        }
+
+        if status.managedStatusLineInstalled {
+            return "Antigravity usage bridge installed"
+        }
+
+        if status.managedStatusLineNeedsRepair {
+            return "Antigravity usage bridge needs repair"
+        }
+
+        if status.hasConflictingStatusLine {
+            return "Custom Antigravity status line detected"
+        }
+
+        return "Antigravity usage bridge not installed"
+    }
+
+    var antigravityUsageStatusSummary: String {
+        guard let status = antigravityStatusLineStatus else {
+            return "Reading \(AntigravityConfigDirectory.resolved().appendingPathComponent("settings.json").path)."
+        }
+
+        if status.managedStatusLineInstalled {
+            if let summary = antigravityUsageSummaryText {
+                return "Caching rate limits from Antigravity CLI · \(summary)"
+            }
+            return "Caching rate limits from Antigravity CLI into \(status.cacheURL.path)."
+        }
+
+        if status.managedStatusLineNeedsRepair {
+            return "Mac Island detected a missing managed Antigravity status line script and will repair it automatically."
+        }
+
+        if status.hasConflictingStatusLine {
+            return "Mac Island will not overwrite an existing Antigravity status line automatically."
+        }
+
+        return "Install a managed Antigravity status line to cache 5h and 7d usage locally."
+    }
+
+    var antigravityUsageSummaryText: String? {
+        guard let snapshot = antigravityUsageSnapshot else {
             return nil
         }
 
@@ -771,6 +847,33 @@ final class HookInstallationCoordinator {
         }
     }
 
+    func refreshAntigravityUsageState() {
+        let manager = antigravityStatusLineInstallationManager
+        Task { [weak self] in
+            guard let self else { return }
+
+            do {
+                let usageState = try await Task.detached(priority: .utility) {
+                    var status = try manager.status()
+                    var repairedManagedBridge = false
+                    if status.managedStatusLineNeedsRepair {
+                        status = try manager.install()
+                        repairedManagedBridge = true
+                    }
+                    let snapshot = try AntigravityUsageLoader.load()
+                    return (status: status, snapshot: snapshot, repairedManagedBridge: repairedManagedBridge)
+                }.value
+                self.antigravityStatusLineStatus = usageState.status
+                self.antigravityUsageSnapshot = usageState.snapshot
+                if usageState.repairedManagedBridge {
+                    self.onStatusMessage?("Recovered the Antigravity usage bridge after repairing a missing managed script.")
+                }
+            } catch {
+                self.onStatusMessage?("Failed to read Antigravity usage state: \(error.localizedDescription)")
+            }
+        }
+    }
+
     func refreshCodexUsageState() {
         Task { [weak self] in
             guard let self else { return }
@@ -815,6 +918,7 @@ final class HookInstallationCoordinator {
         case .gemini: return !geminiHooksInstalled
         case .kimi: return !kimiHooksInstalled
         case .claudeUsageBridge: return !claudeUsageInstalled
+        case .antigravityUsageBridge: return !antigravityUsageInstalled
         }
     }
 
@@ -839,6 +943,7 @@ final class HookInstallationCoordinator {
             case .gemini: return geminiHooksInstalled
             case .kimi: return kimiHooksInstalled
             case .claudeUsageBridge: return claudeUsageInstalled
+            case .antigravityUsageBridge: return antigravityUsageInstalled
             }
         }
     }
@@ -1067,6 +1172,22 @@ final class HookInstallationCoordinator {
         }
     }
 
+    func installAntigravityUsageBridge() {
+        updateAntigravityUsageBridge(userMessage: "Installing Antigravity usage bridge.", intent: .installed) { manager in
+            do {
+                return try manager.install()
+            } catch ClaudeStatusLineInstallationError.existingStatusLineConflict {
+                return try manager.installAsWrapper()
+            }
+        }
+    }
+
+    func uninstallAntigravityUsageBridge() {
+        updateAntigravityUsageBridge(userMessage: "Removing Antigravity usage bridge.", intent: .uninstalled) { manager in
+            try manager.uninstall()
+        }
+    }
+
     // MARK: - Monitoring
 
     func startClaudeUsageMonitoringIfNeeded() {
@@ -1077,6 +1198,19 @@ final class HookInstallationCoordinator {
 
             while !Task.isCancelled {
                 self.refreshClaudeUsageState()
+                try? await Task.sleep(for: .seconds(5))
+            }
+        }
+    }
+
+    func startAntigravityUsageMonitoringIfNeeded() {
+        guard antigravityUsageMonitorTask == nil else { return }
+
+        antigravityUsageMonitorTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+
+            while !Task.isCancelled {
+                self.refreshAntigravityUsageState()
                 try? await Task.sleep(for: .seconds(5))
             }
         }
@@ -1114,6 +1248,26 @@ final class HookInstallationCoordinator {
         }
 
         let snapshot = try ClaudeUsageLoader.load()
+        return (status, snapshot, repairedManagedBridge)
+    }
+
+    nonisolated func readAntigravityUsageState(
+        repairManagedBridgeIfNeeded: Bool
+    ) throws -> (
+        status: AntigravityStatusLineInstallationStatus,
+        snapshot: AntigravityUsageSnapshot?,
+        repairedManagedBridge: Bool
+    ) {
+        let manager = AntigravityStatusLineInstallationManager()
+        var status = try manager.status()
+        var repairedManagedBridge = false
+
+        if repairManagedBridgeIfNeeded && status.managedStatusLineNeedsRepair {
+            status = try manager.install()
+            repairedManagedBridge = true
+        }
+
+        let snapshot = try AntigravityUsageLoader.load()
         return (status, snapshot, repairedManagedBridge)
     }
 
@@ -1290,6 +1444,39 @@ final class HookInstallationCoordinator {
                 }
             } catch {
                 self.onStatusMessage?("Claude usage bridge update failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func updateAntigravityUsageBridge(
+        userMessage: String,
+        intent: AgentHookIntent,
+        operation: @escaping (AntigravityStatusLineInstallationManager) throws -> AntigravityStatusLineInstallationStatus
+    ) {
+        isAntigravityUsageSetupBusy = true
+        onStatusMessage?(userMessage)
+
+        Task { [weak self] in
+            guard let self else { return }
+
+            defer { self.isAntigravityUsageSetupBusy = false }
+
+            do {
+                let status = try operation(self.antigravityStatusLineInstallationManager)
+                self.antigravityStatusLineStatus = status
+                self.antigravityUsageSnapshot = try AntigravityUsageLoader.load()
+                self.intentStore.setIntent(intent, for: .antigravityUsageBridge)
+                if status.managedStatusLineInstalled {
+                    if status.managedStatusLineIsWrapper {
+                        self.onStatusMessage?("Antigravity usage bridge installed in wrapper mode — your existing statusLine is preserved. Start an Antigravity CLI turn to refresh cached rate limits.")
+                    } else {
+                        self.onStatusMessage?("Antigravity usage bridge is installed. Start an Antigravity CLI turn to refresh cached rate limits.")
+                    }
+                } else {
+                    self.onStatusMessage?("Antigravity usage bridge is not installed.")
+                }
+            } catch {
+                self.onStatusMessage?("Antigravity usage bridge update failed: \(error.localizedDescription)")
             }
         }
     }

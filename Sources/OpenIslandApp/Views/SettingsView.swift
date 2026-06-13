@@ -419,6 +419,7 @@ struct SetupSettingsPane: View {
     @State private var confirmingUninstallGemini = false
     @State private var confirmingUninstallKimi = false
     @State private var confirmingUninstallClaudeUsage = false
+    @State private var confirmingUninstallAntigravityUsage = false
 
     private var lang: LanguageManager { model.lang }
 
@@ -633,6 +634,36 @@ struct SetupSettingsPane: View {
                     Button(lang.t("settings.general.cancel"), role: .cancel) {}
                 } message: {
                     Text(lang.t("settings.general.uninstallConfirmMessage.claudeUsage"))
+                }
+
+                HStack {
+                    Label(lang.t("setup.antigravityUsageBridge"), systemImage: "chart.bar")
+                    Spacer()
+                    if model.antigravityUsageInstalled {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                            Text(lang.t("setup.usageBridgeReady"))
+                                .foregroundStyle(.secondary)
+                        }
+                        Button(lang.t("settings.general.uninstall")) {
+                            confirmingUninstallAntigravityUsage = true
+                        }
+                    } else if model.isAntigravityUsageSetupBusy {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Button(lang.t("settings.general.install")) {
+                            model.installAntigravityUsageBridge()
+                        }
+                    }
+                }
+                .alert(lang.t("settings.general.uninstallConfirmTitle"), isPresented: $confirmingUninstallAntigravityUsage) {
+                    Button(lang.t("settings.general.uninstallConfirmAction"), role: .destructive) {
+                        model.uninstallAntigravityUsageBridge()
+                    }
+                    Button(lang.t("settings.general.cancel"), role: .cancel) {}
+                } message: {
+                    Text(lang.t("settings.general.uninstallConfirmMessage.antigravityUsage"))
                 }
 
                 Toggle(lang.t("settings.general.showCodexUsage"), isOn: Binding(

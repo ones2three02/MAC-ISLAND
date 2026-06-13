@@ -37,6 +37,7 @@
 "settings.general.uninstallConfirmMessage.claude" = "這將從 Claude Code 中移除 Mac Island 的 hooks。您可以隨時重新安裝。";
 "settings.general.uninstallConfirmMessage.codex" = "這將從 Codex 中移除 Mac Island 的 hooks。您可以隨時重新安裝。";
 "settings.general.uninstallConfirmMessage.claudeUsage" = "這將移除 Claude 用量橋接。您可以隨時重新安裝。";
+"settings.general.uninstallConfirmMessage.antigravityUsage" = "這將移除 Antigravity 用量橋接。您可以隨時重新安裝。";
 "settings.general.cancel" = "取消";
 "settings.general.language" = "語言";
 "settings.general.languageSystem" = "跟隨系統";
@@ -142,6 +143,7 @@
 "setup.hookReady" = "Hooks 已安裝";
 "setup.hookMissing" = "Hooks 未安裝";
 "setup.usageBridge" = "Claude 用量橋接";
+"setup.antigravityUsageBridge" = "Antigravity 用量橋接";
 "setup.usageBridgeReady" = "已安裝";
 "setup.usageBridgeDesc" = "在本機追蹤 Claude API 用量";
 "setup.optional" = "選用";

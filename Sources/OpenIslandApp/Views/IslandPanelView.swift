@@ -915,7 +915,7 @@ struct IslandPanelView: View {
                     : "\(window.label) \(remaining)% left"
             }.joined(separator: " | ")
         } else if session.id == "desktop_app:antigravity" {
-            if let snapshot = model.claudeUsageSnapshot {
+            if let snapshot = model.antigravityUsageSnapshot {
                 var parts: [String] = []
                 if let fiveHour = snapshot.fiveHour {
                     let remaining = max(0, 100 - Int(fiveHour.usedPercentage.rounded()))
@@ -1141,7 +1141,44 @@ struct IslandPanelView: View {
                 providers.append(
                     UsageProviderPresentation(
                         id: "claude",
-                        title: isAntigravityRunning ? "Antigravity" : "Claude",
+                        title: "Claude",
+                        windows: windows
+                    )
+                )
+            }
+        }
+
+        if let snapshot = model.antigravityUsageSnapshot,
+           snapshot.isEmpty == false {
+            var windows: [UsageWindowPresentation] = []
+
+            if let fiveHour = snapshot.fiveHour {
+                windows.append(
+                    UsageWindowPresentation(
+                        id: "antigravity-5h",
+                        label: "5h",
+                        usedPercentage: fiveHour.usedPercentage,
+                        resetsAt: fiveHour.resetsAt
+                    )
+                )
+            }
+
+            if let sevenDay = snapshot.sevenDay {
+                windows.append(
+                    UsageWindowPresentation(
+                        id: "antigravity-7d",
+                        label: "7d",
+                        usedPercentage: sevenDay.usedPercentage,
+                        resetsAt: sevenDay.resetsAt
+                    )
+                )
+            }
+
+            if windows.isEmpty == false {
+                providers.append(
+                    UsageProviderPresentation(
+                        id: "antigravity",
+                        title: "Antigravity",
                         windows: windows
                     )
                 )
@@ -1149,7 +1186,7 @@ struct IslandPanelView: View {
         } else if isAntigravityRunning {
             providers.append(
                 UsageProviderPresentation(
-                    id: "claude",
+                    id: "antigravity",
                     title: "Antigravity",
                     windows: [],
                     isPlaceholder: true
