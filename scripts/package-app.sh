@@ -40,8 +40,8 @@ hooks_binary="$build_bin_dir/OpenIslandHooks"
 setup_binary="$build_bin_dir/OpenIslandSetup"
 brand_icon="$repo_root/Assets/Brand/OpenIsland.icns"
 
-python3 "$brand_script"
-python3 "$dmg_bg_script"
+python3 "$brand_script" || echo "⚠ Warning: Failed to regenerate brand icons, using existing icons."
+python3 "$dmg_bg_script" || echo "⚠ Warning: Failed to regenerate DMG background."
 
 rm -rf "$bundle_dir" "$zip_path" "$dmg_path"
 mkdir -p "$bundle_dir/Contents/MacOS" "$bundle_dir/Contents/Helpers" "$bundle_dir/Contents/Resources" "$bundle_dir/Contents/Frameworks"
