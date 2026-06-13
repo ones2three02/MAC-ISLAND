@@ -81,10 +81,10 @@ extension AgentSession {
 
 // MARK: - Animations
 
-private let openAnimation = Animation.spring(response: 0.46, dampingFraction: 0.82, blendDuration: 0.15)
-private let closeAnimation = Animation.spring(response: 0.38, dampingFraction: 0.88, blendDuration: 0.15)
+private let openAnimation = Animation.spring(response: 0.28, dampingFraction: 0.84, blendDuration: 0.08)
+private let closeAnimation = Animation.spring(response: 0.24, dampingFraction: 0.90, blendDuration: 0.08)
 private let popAnimation = Animation.spring(response: 0.30, dampingFraction: 0.60)
-private let openedSurfaceUnmountDelay: TimeInterval = 0.36
+private let openedSurfaceUnmountDelay: TimeInterval = 0.22
 
 private struct ConditionalDrawingGroup: ViewModifier {
     let enabled: Bool
@@ -133,7 +133,7 @@ struct IslandPanelView: View {
     
     private var openedContentOpacityAnimation: Animation {
         if usesOpenedVisualState {
-            return .easeOut(duration: 0.16).delay(0.20)
+            return .easeOut(duration: 0.12).delay(0.08)
         } else {
             return .easeIn(duration: 0.08)
         }

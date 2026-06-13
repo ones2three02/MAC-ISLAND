@@ -280,7 +280,7 @@ final class OverlayPanelController {
 
     /// Grace period before a hover-open timer is cancelled.  Prevents
     /// mouse jitter at the notch edge from resetting the delay.
-    private static let hoverCancelGracePeriod: TimeInterval = 0.1
+    private static let hoverCancelGracePeriod: TimeInterval = 0.04
 
     private func scheduleHoverOpen() {
         // Mouse re-entered during grace period — just revoke the cancel.
