@@ -88,10 +88,12 @@ final class AppModel {
     var isCodexSetupBusy: Bool { hooks.isCodexSetupBusy }
     var isClaudeHookSetupBusy: Bool { hooks.isClaudeHookSetupBusy }
     var isClaudeUsageSetupBusy: Bool { hooks.isClaudeUsageSetupBusy }
+    var isAntigravityUsageSetupBusy: Bool { hooks.isAntigravityUsageSetupBusy }
     var codexHookStatus: CodexHookInstallationStatus? { hooks.codexHookStatus }
     var claudeHookStatus: ClaudeHookInstallationStatus? { hooks.claudeHookStatus }
     var claudeStatusLineStatus: ClaudeStatusLineInstallationStatus? { hooks.claudeStatusLineStatus }
     var claudeUsageSnapshot: ClaudeUsageSnapshot? { hooks.claudeUsageSnapshot }
+    var antigravityUsageSnapshot: AntigravityUsageSnapshot? { hooks.antigravityUsageSnapshot }
     var codexUsageSnapshot: CodexUsageSnapshot? { hooks.codexUsageSnapshot }
     var hooksBinaryURL: URL? { hooks.hooksBinaryURL }
     var codexHooksInstalled: Bool { hooks.codexHooksInstalled }
@@ -110,11 +112,15 @@ final class AppModel {
     var isCodebuddyHookSetupBusy: Bool { hooks.isCodebuddyHookSetupBusy }
     var openCodePluginInstalled: Bool { hooks.openCodePluginInstalled }
     var claudeUsageInstalled: Bool { hooks.claudeUsageInstalled }
+    var antigravityUsageInstalled: Bool { hooks.antigravityUsageInstalled }
     var claudeHookStatusTitle: String { hooks.claudeHookStatusTitle }
     var claudeHookStatusSummary: String { hooks.claudeHookStatusSummary }
     var claudeUsageStatusTitle: String { hooks.claudeUsageStatusTitle }
     var claudeUsageStatusSummary: String { hooks.claudeUsageStatusSummary }
     var claudeUsageSummaryText: String? { hooks.claudeUsageSummaryText }
+    var antigravityUsageStatusTitle: String { hooks.antigravityUsageStatusTitle }
+    var antigravityUsageStatusSummary: String { hooks.antigravityUsageStatusSummary }
+    var antigravityUsageSummaryText: String? { hooks.antigravityUsageSummaryText }
     var codexUsageStatusTitle: String { hooks.codexUsageStatusTitle }
     var codexUsageStatusSummary: String { hooks.codexUsageStatusSummary }
     var codexUsageSummaryText: String? { hooks.codexUsageSummaryText }
@@ -171,6 +177,7 @@ final class AppModel {
     func refreshOpenCodePluginStatus() { hooks.refreshOpenCodePluginStatus() }
     func refreshCursorHookStatus() { hooks.refreshCursorHookStatus() }
     func refreshClaudeUsageState() { hooks.refreshClaudeUsageState() }
+    func refreshAntigravityUsageState() { hooks.refreshAntigravityUsageState() }
     func refreshCodexUsageState() { hooks.refreshCodexUsageState() }
     func installCodexHooks() { hooks.installCodexHooks() }
     func uninstallCodexHooks() { hooks.uninstallCodexHooks() }
@@ -197,6 +204,8 @@ final class AppModel {
     func uninstallKimiHooks() { hooks.uninstallKimiHooks() }
     func installClaudeUsageBridge() { hooks.installClaudeUsageBridge() }
     func uninstallClaudeUsageBridge() { hooks.uninstallClaudeUsageBridge() }
+    func installAntigravityUsageBridge() { hooks.installAntigravityUsageBridge() }
+    func uninstallAntigravityUsageBridge() { hooks.uninstallAntigravityUsageBridge() }
     func updateClaudeConfigDirectory(to newDirectory: URL?) { hooks.updateClaudeConfigDirectory(to: newDirectory) }
     func runHealthChecks() { hooks.runHealthChecks() }
     func forceKillSessionProcess(sessionID: String) {
@@ -1100,6 +1109,8 @@ final class AppModel {
             hooks.refreshCursorHookStatus()
             hooks.refreshClaudeUsageState()
             hooks.startClaudeUsageMonitoringIfNeeded()
+            hooks.refreshAntigravityUsageState()
+            hooks.startAntigravityUsageMonitoringIfNeeded()
             if showCodexUsage {
                 hooks.refreshCodexUsageState()
                 hooks.startCodexUsageMonitoringIfNeeded()
@@ -1659,6 +1670,7 @@ final class AppModel {
                 if self.hooks.shouldAutoInstall(.gemini) { self.installGeminiHooks() }
                 if self.hooks.shouldAutoInstall(.kimi) { self.installKimiHooks() }
                 if self.hooks.shouldAutoInstall(.claudeUsageBridge) { self.installClaudeUsageBridge() }
+                if self.hooks.shouldAutoInstall(.antigravityUsageBridge) { self.installAntigravityUsageBridge() }
 
                 // Run health checks after install to detect stale paths, conflicts, etc.
                 try? await Task.sleep(for: .milliseconds(500))
