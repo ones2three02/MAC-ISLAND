@@ -27,6 +27,7 @@ jobs:
           pip3 install --break-system-packages Pillow
 
       - name: Import signing certificate
+        if: ${{ secrets.APPLE_CERTIFICATE_P12 != '' }}
         env:
           CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
           CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -114,7 +115,7 @@ jobs:
           echo "Bundle structure OK"
 
       - name: Notarize (best-effort)
-        if: vars.SKIP_NOTARIZE != 'true'
+        if: ${{ vars.SKIP_NOTARIZE != 'true' && secrets.APPLE_CERTIFICATE_P12 != '' }}
         id: notarize
         continue-on-error: true
         env:
