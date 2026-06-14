@@ -211,18 +211,21 @@ class MediaControlModule: IslandModule {
                         .animation(self.isPlaying ? .linear(duration: 4).repeatForever(autoreverses: false) : .default, value: self.isPlaying)
                     
                     if self.isPlaying && showLyrics && !currentLyric.isEmpty {
-                        Text(currentLyric)
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundStyle(.white.opacity(0.9))
-                            .lineLimit(1)
-                            .transition(.asymmetric(
-                                insertion: .push(from: .bottom).combined(with: .opacity),
-                                removal: .push(from: .top).combined(with: .opacity)
-                            ))
-                            .id(currentLyric)
+                        ZStack(alignment: .leading) {
+                            Text(currentLyric)
+                                .font(.system(size: 9, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.9))
+                                .lineLimit(1)
+                                .transition(.asymmetric(
+                                    insertion: .push(from: .bottom).combined(with: .opacity),
+                                    removal: .push(from: .top).combined(with: .opacity)
+                                ))
+                                .id(currentLyric)
+                        }
+                        .clipped()
                     }
                 }
-                .animation(.spring(response: 0.35, dampingFraction: 0.75), value: currentLyric)
+                .animation(.spring(response: 0.35, dampingFraction: 0.85), value: currentLyric)
             }
         )
     }
@@ -749,44 +752,39 @@ struct ExpandedLyricsView: View {
             } else {
                 let currentIndex = module.currentLyricLineIndex(at: pos) ?? -1
                 
-                VStack(spacing: 6) {
-                    // Previous line
-                    if currentIndex > 0 {
-                        Text(lines[currentIndex - 1].text)
-                            .font(.system(size: 10))
-                            .foregroundStyle(.white.opacity(0.35))
-                            .lineLimit(1)
-                    } else {
-                        Text(" ")
-                            .font(.system(size: 10))
+                ScrollViewReader { proxy in
+                    ScrollView(.vertical, showsIndicators: false) {
+                        VStack(spacing: 8) {
+                            // Empty space at the top to center first lines
+                            Spacer().frame(height: 16)
+                            
+                            ForEach(0..<lines.count, id: \.self) { index in
+                                Text(lines[index].text)
+                                    .font(.system(size: index == currentIndex ? 12 : 10, weight: index == currentIndex ? .bold : .medium))
+                                    .foregroundStyle(index == currentIndex ? Color.pink : Color.white.opacity(0.35))
+                                    .scaleEffect(index == currentIndex ? 1.04 : 1.0)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .multilineTextAlignment(.center)
+                                    .id(index)
+                                    .animation(.spring(response: 0.3, dampingFraction: 0.75), value: currentIndex)
+                            }
+                            
+                            // Empty space at the bottom to center last lines
+                            Spacer().frame(height: 16)
+                        }
                     }
-                    
-                    // Current line (highlighted & scaled)
-                    if currentIndex >= 0 && currentIndex < lines.count {
-                        Text(lines[currentIndex].text)
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(.pink)
-                            .lineLimit(1)
-                            .scaleEffect(1.03)
-                    } else {
-                        Text("♪ 音乐播放中 ♪")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(.pink.opacity(0.8))
+                    .frame(height: 52) // Fits around 3 lines nicely
+                    .disabled(true) // Disable manual scroll to behave like a HUD display
+                    .onChange(of: currentIndex) { _, newIndex in
+                        withAnimation(.spring(response: 0.38, dampingFraction: 0.8)) {
+                            proxy.scrollTo(newIndex, anchor: .center)
+                        }
                     }
-                    
-                    // Next line
-                    if currentIndex + 1 < lines.count {
-                        Text(lines[currentIndex + 1].text)
-                            .font(.system(size: 10))
-                            .foregroundStyle(.white.opacity(0.35))
-                            .lineLimit(1)
-                    } else {
-                        Text(" ")
-                            .font(.system(size: 10))
+                    .onAppear {
+                        proxy.scrollTo(currentIndex, anchor: .center)
                     }
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
+                .padding(.vertical, 4)
                 .background(Color.white.opacity(0.015), in: RoundedRectangle(cornerRadius: 6))
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)

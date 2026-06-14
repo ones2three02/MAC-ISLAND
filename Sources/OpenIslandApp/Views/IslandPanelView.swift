@@ -223,7 +223,7 @@ struct IslandPanelView: View {
                 }
             } else {
                 showingContent = false
-                model.scheduler.userLockedModuleId = nil
+                // model.scheduler.userLockedModuleId = nil
             }
         }
     }
