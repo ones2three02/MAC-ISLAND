@@ -209,14 +209,20 @@ jobs:
             if (privateKeyStr.includes("-----BEGIN")) {
               privateKey = crypto.createPrivateKey(privateKeyStr);
             } else {
+              const rawBytes = Buffer.from(privateKeyStr, "base64");
+              const privateKeyRaw = rawBytes.slice(0, 32);
+              const pkcs8Header = Buffer.from("302e020100300506032b657004220420", "hex");
+              const pkcs8Der = Buffer.concat([pkcs8Header, privateKeyRaw]);
               privateKey = crypto.createPrivateKey({
-                key: Buffer.from(privateKeyStr, "base64"),
-                format: "raw",
-                type: "ed25519"
+                key: pkcs8Der,
+                format: "der",
+                type: "pkcs8"
               });
             }
             const publicKey = crypto.createPublicKey(privateKey);
-            const publicKeyB64 = publicKey.export({ format: "raw", type: "ed25519" }).toString("base64");
+            const publicKeyDer = publicKey.export({ format: "der", type: "spki" });
+            const rawPublicKey = publicKeyDer.slice(12);
+            const publicKeyB64 = rawPublicKey.toString("base64");
             console.log("THE_CORRECT_EDDSA_PUBLIC_KEY=" + publicKeyB64);
           } catch (e) {
             console.error("Failed to parse private key:", e);
