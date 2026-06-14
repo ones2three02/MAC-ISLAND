@@ -638,6 +638,8 @@ struct IslandPanelView: View {
                 Image(systemName: "hourglass")
             case "system_telemetry":
                 Image(systemName: "chart.bar.fill")
+            case "message_center":
+                Image(systemName: "message")
             default:
                 Image(systemName: "app.fill")
             }
@@ -655,6 +657,8 @@ struct IslandPanelView: View {
             return isChinese ? "番茄钟" : "Timer"
         case "system_telemetry":
             return isChinese ? "系统" : "System"
+        case "message_center":
+            return isChinese ? "消息" : "Messages"
         default:
             return id
         }

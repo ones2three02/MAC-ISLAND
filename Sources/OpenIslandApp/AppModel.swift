@@ -741,6 +741,7 @@ final class AppModel {
         scheduler.registerModule(mediaModule)
         
         scheduler.registerModule(TimerModule())
+        scheduler.registerModule(MessageModule())
         scheduler.updateActiveModule()
         hasFinishedInit = true
     }
