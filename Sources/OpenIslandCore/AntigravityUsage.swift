@@ -201,3 +201,40 @@ public enum AntigravityAccountLoader {
         return payloadJson["email"] as? String
     }
 }
+
+public enum CodexAccountLoader {
+    public static let defaultCredsURL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent(".codex", isDirectory: true)
+        .appendingPathComponent("auth.json")
+
+    public static func loadEmail(from url: URL = defaultCredsURL) -> String? {
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            return nil
+        }
+        guard let data = try? Data(contentsOf: url) else {
+            return nil
+        }
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let tokens = json["tokens"] as? [String: Any],
+              let idToken = tokens["id_token"] as? String else {
+            return nil
+        }
+        
+        let parts = idToken.components(separatedBy: ".")
+        guard parts.count > 1 else { return nil }
+        let base64Segment = parts[1]
+        
+        var base64 = base64Segment
+            .replacingOccurrences(of: "-", with: "+")
+            .replacingOccurrences(of: "_", with: "/")
+        
+        let remainder = base64.count % 4
+        if remainder > 0 {
+            base64 += String(repeating: "=", count: 4 - remainder)
+        }
+        
+        guard let decodedData = Data(base64Encoded: base64) else { return nil }
+        guard let payloadJson = try? JSONSerialization.jsonObject(with: decodedData) as? [String: Any] else { return nil }
+        return payloadJson["email"] as? String
+    }
+}

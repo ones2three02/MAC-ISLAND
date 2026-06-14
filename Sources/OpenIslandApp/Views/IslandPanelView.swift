@@ -1745,11 +1745,12 @@ private struct IslandSessionRow: View {
                                 }
                                 .foregroundStyle(.white.opacity(0.35))
                             } else if session.id == "desktop_app:codex" {
+                                let account = CodexAccountLoader.loadEmail() ?? "Local Account"
                                 HStack(spacing: 3.5) {
-                                    Image(systemName: "person.fill")
+                                    Image(systemName: account.contains("@") ? "envelope.fill" : "person.fill")
                                         .font(.system(size: 7.5))
-                                    Text("Local Account")
-                                        .font(.system(size: 9.5, weight: .medium, design: .rounded))
+                                    Text(account)
+                                        .font(.system(size: 9.5, weight: .medium, design: account.contains("@") ? .monospaced : .rounded))
                                 }
                                 .foregroundStyle(.white.opacity(0.35))
                             }
