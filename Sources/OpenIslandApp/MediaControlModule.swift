@@ -183,35 +183,43 @@ class MediaControlModule: IslandModule {
     }
     
     var leftPillWidth: CGFloat {
+        return 24
+    }
+    
+    var rightPillWidth: CGFloat {
         let showLyrics = UserDefaults.standard.bool(forKey: "showLyricsOnClosedIsland")
         if isPlaying && showLyrics {
             let currentLyric = currentLyricText(at: currentPosition)
             if !currentLyric.isEmpty {
-                return 155
+                // Calculate dynamic text width based on character count
+                let textWidth = CGFloat(currentLyric.count) * 11.0
+                return min(180, max(60, textWidth)) + 30
             }
         }
         return 24
     }
     
-    var rightPillWidth: CGFloat {
-        return 24
+    func leftPillView() -> AnyView {
+        AnyView(
+            HStack(spacing: 4) {
+                Image(systemName: "music.note")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.pink)
+                    .rotationEffect(.degrees(self.isPlaying ? 360 : 0))
+                    .animation(self.isPlaying ? .linear(duration: 4).repeatForever(autoreverses: false) : .default, value: self.isPlaying)
+            }
+        )
     }
     
-    func leftPillView() -> AnyView {
+    func rightPillView() -> AnyView {
         AnyView(
             TimelineView(.animation(minimumInterval: 0.2)) { timeline in
                 let currentLyric = self.currentLyricText(at: self.currentPosition)
                 let showLyrics = UserDefaults.standard.bool(forKey: "showLyricsOnClosedIsland")
                 
                 HStack(spacing: 6) {
-                    Image(systemName: "music.note")
-                        .font(.system(size: 9))
-                        .foregroundStyle(.pink)
-                        .rotationEffect(.degrees(self.isPlaying ? 360 : 0))
-                        .animation(self.isPlaying ? .linear(duration: 4).repeatForever(autoreverses: false) : .default, value: self.isPlaying)
-                    
                     if self.isPlaying && showLyrics && !currentLyric.isEmpty {
-                        ZStack(alignment: .leading) {
+                        ZStack(alignment: .trailing) {
                             Text(currentLyric)
                                 .font(.system(size: 9, weight: .medium))
                                 .foregroundStyle(.white.opacity(0.9))
@@ -224,16 +232,12 @@ class MediaControlModule: IslandModule {
                         }
                         .clipped()
                     }
+                    
+                    AudioWaveIndicator(isPlaying: self.isPlaying)
+                        .frame(width: 24, alignment: .trailing)
                 }
                 .animation(.spring(response: 0.35, dampingFraction: 0.85), value: currentLyric)
             }
-        )
-    }
-    
-    func rightPillView() -> AnyView {
-        AnyView(
-            AudioWaveIndicator(isPlaying: isPlaying)
-                .frame(width: 24, alignment: .trailing)
         )
     }
     
@@ -651,76 +655,84 @@ struct MediaControlExpandedView: View {
                 .padding(.vertical, 12)
                 .background(Color.white.opacity(0.02), in: RoundedRectangle(cornerRadius: 8))
             } else {
-                HStack(spacing: 12) {
-                    // Album artwork
-                    if let art = module.artwork {
-                        Image(nsImage: art)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
+                VStack(spacing: 0) {
+                    HStack(spacing: 12) {
+                        // Album artwork
+                        if let art = module.artwork {
+                            Image(nsImage: art)
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: 44, height: 44)
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                                )
+                                .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 2)
+                        } else {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(LinearGradient(colors: [Color.pink.opacity(0.18), Color.purple.opacity(0.18)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                Image(systemName: "music.note")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundStyle(.pink.opacity(0.85))
+                            }
                             .frame(width: 44, height: 44)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 6)
-                                    .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+                                    .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
                             )
-                            .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 2)
-                    } else {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(LinearGradient(colors: [Color.pink.opacity(0.18), Color.purple.opacity(0.18)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                            Image(systemName: "music.note")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(.pink.opacity(0.85))
                         }
-                        .frame(width: 44, height: 44)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
-                        )
+                        
+                        // Track & Artist text
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(module.title)
+                                .font(.system(size: 12, weight: .bold))
+                                .lineLimit(1)
+                                .foregroundStyle(.white)
+                            
+                            Text(module.artist.isEmpty ? "Unknown Artist" : module.artist)
+                                .font(.system(size: 10))
+                                .lineLimit(1)
+                                .foregroundStyle(.gray)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        
+                        // Playback Controls
+                        HStack(spacing: 8) {
+                            MediaControlButton(systemName: "backward.fill") {
+                                module.previousTrack()
+                            }
+                            
+                            MediaControlButton(systemName: module.isPlaying ? "pause.fill" : "play.fill", isPrimary: true) {
+                                module.togglePlayPause()
+                            }
+                            
+                            MediaControlButton(systemName: "forward.fill") {
+                                module.nextTrack()
+                            }
+                        }
                     }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 8)
                     
-                    // Track & Artist text
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(module.title)
-                            .font(.system(size: 12, weight: .bold))
-                            .lineLimit(1)
-                            .foregroundStyle(.white)
+                    // Real-time scrolling lyrics view (if available)
+                    if !module.lyricLines.isEmpty || (module.plainLyrics != nil && !module.plainLyrics!.isEmpty) {
+                        Divider()
+                            .background(Color.white.opacity(0.06))
+                            .padding(.horizontal, 10)
                         
-                        Text(module.artist.isEmpty ? "Unknown Artist" : module.artist)
-                            .font(.system(size: 10))
-                            .lineLimit(1)
-                            .foregroundStyle(.gray)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    
-                    // Playback Controls
-                    HStack(spacing: 8) {
-                        MediaControlButton(systemName: "backward.fill") {
-                            module.previousTrack()
-                        }
-                        
-                        MediaControlButton(systemName: module.isPlaying ? "pause.fill" : "play.fill", isPrimary: true) {
-                            module.togglePlayPause()
-                        }
-                        
-                        MediaControlButton(systemName: "forward.fill") {
-                            module.nextTrack()
-                        }
+                        ExpandedLyricsView(module: module)
+                            .padding(.horizontal, 10)
+                            .padding(.top, 6)
+                            .padding(.bottom, 8)
                     }
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
                 .background(Color.white.opacity(0.03), in: RoundedRectangle(cornerRadius: 8))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
                         .stroke(Color.white.opacity(0.04), lineWidth: 0.5)
                 )
-                
-                // Real-time scrolling lyrics view (if available)
-                if !module.lyricLines.isEmpty || (module.plainLyrics != nil && !module.plainLyrics!.isEmpty) {
-                    ExpandedLyricsView(module: module)
-                        .padding(.top, 4)
-                }
             }
         }
         .padding(.horizontal, 16)
@@ -785,10 +797,10 @@ struct ExpandedLyricsView: View {
                     }
                 }
                 .padding(.vertical, 4)
-                .background(Color.white.opacity(0.015), in: RoundedRectangle(cornerRadius: 6))
+                .background(Color.black.opacity(0.15), in: RoundedRectangle(cornerRadius: 6))
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.white.opacity(0.03), lineWidth: 0.5)
+                        .stroke(Color.white.opacity(0.02), lineWidth: 0.5)
                 )
             }
         }

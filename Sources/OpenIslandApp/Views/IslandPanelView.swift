@@ -245,7 +245,13 @@ struct IslandPanelView: View {
             let layout: V6ClosedLayout = isExternalDisplayPlacement ? .external : .macbook
             if layout == .macbook {
                 let physicalNotchWidth: CGFloat = targetOverlayScreen?.notchSize.width ?? 180
-                return 44 + physicalNotchWidth + 44
+                let activeModule = model.scheduler.activeModule
+                let leftWidth: CGFloat = activeModule?.leftPillWidth ?? 24
+                let rightWidth: CGFloat = activeModule?.rightPillWidth ?? 0
+                let pad = closedNotchHeight / 2
+                let leftReserve = max(44, leftWidth + pad)
+                let rightReserve = max(44, rightWidth + pad)
+                return leftReserve + physicalNotchWidth + rightReserve
             } else {
                 let activeModule = model.scheduler.activeModule
                 let leftWidth: CGFloat = activeModule?.leftPillWidth ?? 24
@@ -266,6 +272,21 @@ struct IslandPanelView: View {
             }
         }()
 
+        let closedOffset: CGFloat = {
+            let layout: V6ClosedLayout = isExternalDisplayPlacement ? .external : .macbook
+            if layout == .macbook {
+                let activeModule = model.scheduler.activeModule
+                let leftWidth: CGFloat = activeModule?.leftPillWidth ?? 24
+                let rightWidth: CGFloat = activeModule?.rightPillWidth ?? 0
+                let pad = closedNotchHeight / 2
+                let leftReserve = max(44, leftWidth + pad)
+                let rightReserve = max(44, rightWidth + pad)
+                return (rightReserve - leftReserve) / 2
+            } else {
+                return 0
+            }
+        }()
+
         VStack(spacing: 0) {
             ZStack(alignment: .top) {
                 // 共享的黑色磨砂玻璃背景底壳，随 notchStatus 状态非线性平滑形变
@@ -276,6 +297,7 @@ struct IslandPanelView: View {
                 )
                 let currentWidth = usesOpenedVisualState ? openedWidth : closedWidth
                 let currentHeight = usesOpenedVisualState ? openedHeight : closedNotchHeight
+                let currentXOffset = usesOpenedVisualState ? 0 : closedOffset
                 
                 currentShape
                     .fill(Color.black)
@@ -302,6 +324,8 @@ struct IslandPanelView: View {
                         x: 0,
                         y: usesOpenedVisualState ? 3 : 1
                     )
+                    .offset(x: currentXOffset)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.85), value: currentWidth)
 
                 if shouldRenderOpenedSurface {
                     openedSurface(width: currentWidth, height: currentHeight)
@@ -317,8 +341,9 @@ struct IslandPanelView: View {
                     .clipShape(currentShape)
                     .opacity(usesOpenedVisualState ? 0 : 1)
                     .scaleEffect(usesOpenedVisualState ? 1.12 : 1.0, anchor: .top)
-                    .offset(y: usesOpenedVisualState ? 8 : 0)
+                    .offset(x: currentXOffset, y: usesOpenedVisualState ? 8 : 0)
                     .allowsHitTesting(!usesOpenedVisualState)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.85), value: currentWidth)
             }
             .frame(maxWidth: .infinity, alignment: .top)
         }
