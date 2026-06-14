@@ -193,6 +193,36 @@ jobs:
           echo "signed=true" >> "$GITHUB_OUTPUT"
           echo "EdDSA signature: $ed_signature (length: $length)"
 
+      - name: 'Debug: Print Sparkle Public Key'
+        env:
+          SPARKLE_EDDSA_KEY: ${{ secrets.SPARKLE_EDDSA_KEY }}
+        run: |
+          node -e '
+          const crypto = require("crypto");
+          const privateKeyStr = process.env.SPARKLE_EDDSA_KEY;
+          if (!privateKeyStr) {
+            console.log("SPARKLE_EDDSA_KEY is empty");
+            process.exit(0);
+          }
+          try {
+            let privateKey;
+            if (privateKeyStr.includes("-----BEGIN")) {
+              privateKey = crypto.createPrivateKey(privateKeyStr);
+            } else {
+              privateKey = crypto.createPrivateKey({
+                key: Buffer.from(privateKeyStr, "base64"),
+                format: "raw",
+                type: "ed25519"
+              });
+            }
+            const publicKey = crypto.createPublicKey(privateKey);
+            const publicKeyB64 = publicKey.export({ format: "raw", type: "ed25519" }).toString("base64");
+            console.log("THE_CORRECT_EDDSA_PUBLIC_KEY=" + publicKeyB64);
+          } catch (e) {
+            console.error("Failed to parse private key:", e);
+          }
+          '
+
       - name: Update appcast.xml and Push
         if: steps.sparkle_sign.outputs.signed == 'true'
         run: |
