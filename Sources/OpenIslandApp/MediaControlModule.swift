@@ -827,8 +827,20 @@ struct ExpandedLyricsView: View {
                             Spacer().frame(height: 16)
                         }
                     }
-                    .frame(height: 52) // Fits around 3 lines nicely
+                    .frame(height: 60) // Fits around 3 lines nicely
                     .disabled(true) // Disable manual scroll to behave like a HUD display
+                    .mask(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .clear, location: 0),
+                                .init(color: .white, location: 0.25),
+                                .init(color: .white, location: 0.75),
+                                .init(color: .clear, location: 1)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
                     .onChange(of: currentIndex) { _, newIndex in
                         withAnimation(.spring(response: 0.38, dampingFraction: 0.8)) {
                             proxy.scrollTo(newIndex, anchor: .center)

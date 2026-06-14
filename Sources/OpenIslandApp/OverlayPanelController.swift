@@ -559,7 +559,7 @@ final class OverlayPanelController {
             return 255
 
         case "media_control":
-            return 176
+            return 192
 
         case "timer":
             return 170
