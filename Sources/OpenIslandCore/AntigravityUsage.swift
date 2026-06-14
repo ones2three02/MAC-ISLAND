@@ -38,8 +38,41 @@ public enum AntigravityUsageLoader {
     public static let defaultCacheURL = URL(fileURLWithPath: "/tmp/open-island-antigravity-rl.json")
     public static let legacyCacheURL = URL(fileURLWithPath: "/tmp/vibe-island-antigravity-rl.json")
 
+    private nonisolated(unsafe) static var lastRunTime: Date = .distantPast
+    private static let lock = NSLock()
+
+    private static func runQuotaHelperIfNeeded() {
+        lock.lock()
+        defer { lock.unlock() }
+
+        let now = Date()
+        guard now.timeIntervalSince(lastRunTime) >= 15.0 else {
+            return
+        }
+        lastRunTime = now
+
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let helperURL = home
+            .appendingPathComponent(".open-island", isDirectory: true)
+            .appendingPathComponent("bin", isDirectory: true)
+            .appendingPathComponent("open-island-antigravity-quota-helper.py")
+
+        guard FileManager.default.fileExists(atPath: helperURL.path) else {
+            return
+        }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+        process.arguments = [helperURL.path, defaultCacheURL.path]
+        process.standardOutput = Pipe()
+        process.standardError = Pipe()
+
+        try? process.run()
+    }
+
     public static func load() throws -> AntigravityUsageSnapshot? {
-        try load(from: [defaultCacheURL, legacyCacheURL])
+        runQuotaHelperIfNeeded()
+        return try load(from: [defaultCacheURL, legacyCacheURL])
     }
 
     public static func load(from url: URL) throws -> AntigravityUsageSnapshot? {
