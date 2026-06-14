@@ -82,6 +82,11 @@ class MediaControlModule: IslandModule {
     private var fetchedTitle: String = ""
     private var fetchedArtist: String = ""
     
+    @ObservationIgnored
+    private var fetchTask: Task<Void, Never>? = nil
+    @ObservationIgnored
+    private var lyricsTask: Task<Void, Never>? = nil
+    
     var currentPosition: Double {
         guard isPlaying else { return elapsedTime }
         let elapsedSinceUpdate = Date().timeIntervalSince1970 - lastUpdateTimestamp
@@ -299,73 +304,101 @@ class MediaControlModule: IslandModule {
     private func fetchNowPlayingInfo() {
         debugLog("MediaControlModule fetchNowPlayingInfo started")
         
-        // 异步在后台线程启动 Process，防止卡顿 App 主线程
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/swift")
-            process.arguments = ["/tmp/openisland_nowplaying.swift"]
-            
-            let stdoutPipe = Pipe()
-            process.standardOutput = stdoutPipe
-            
+        fetchTask?.cancel()
+        fetchTask = Task {
             do {
-                try process.run()
-                
-                let data = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
-                process.waitUntilExit()
-                
-                if let jsonString = String(data: data, encoding: .utf8), !jsonString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    if let jsonData = jsonString.data(using: .utf8),
-                       let dict = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any] {
+                try await Task.sleep(for: .seconds(0.15))
+            } catch {
+                return
+            }
+            if Task.isCancelled { return }
+            
+            let resultDict = await performFetchSubprocess()
+            if Task.isCancelled { return }
+            
+            updateState(with: resultDict)
+        }
+    }
+    
+    nonisolated private func performFetchSubprocess() async -> [String: Any]? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/swift")
+        process.arguments = ["/tmp/openisland_nowplaying.swift"]
+        
+        let stdoutPipe = Pipe()
+        process.standardOutput = stdoutPipe
+        
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    do {
+                        try process.run()
+                        let data = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+                        process.waitUntilExit()
                         
-                        Task { @MainActor [weak self] in
-                            guard let self = self else { return }
-                            let oldTitle = self.title
-                            let oldArtist = self.artist
-                            let oldIsPlaying = self.isPlaying
-                            
-                            var transaction = Transaction()
-                            transaction.disablesAnimations = true
-                            withTransaction(transaction) {
-                                self.title = dict["title"] as? String ?? ""
-                                self.artist = dict["artist"] as? String ?? ""
-                                self.elapsedTime = dict["elapsedTime"] as? Double ?? 0.0
-                                self.duration = dict["duration"] as? Double ?? 0.0
-                                self.playbackRate = dict["playbackRate"] as? Double ?? 0.0
-                                self.lastUpdateTimestamp = dict["timestamp"] as? Double ?? Date().timeIntervalSince1970
-                                let rate = self.playbackRate
-                                
-                                debugLog("MediaControlModule swift helper parsed details: title='\(self.title)', artist='\(self.artist)', rate=\(rate), elapsed=\(self.elapsedTime), duration=\(self.duration)")
-                                
-                                if let artBase64 = dict["artwork"] as? String, !artBase64.isEmpty,
-                                   let artData = Data(base64Encoded: artBase64) {
-                                    self.artwork = NSImage(data: artData)
-                                } else {
-                                    self.artwork = nil
-                                }
-                                
-                                let hasValidTrack = !self.title.isEmpty && self.title != "Not Playing" && self.title != "No active track"
-                                if rate > 0.0 {
-                                    self.isPlaying = true
-                                } else if hasValidTrack {
-                                    self.isPlaying = true
-                                } else {
-                                    self.isPlaying = false
-                                }
-                                
-                                if oldTitle != self.title || oldArtist != self.artist || oldIsPlaying != self.isPlaying {
-                                    debugLog("MediaControlModule state changed via swift helper, notifying status change callback")
-                                    if oldTitle != self.title || oldArtist != self.artist {
-                                        self.checkAndFetchLyrics()
-                                    }
-                                    self.onStatusChanged?()
-                                }
-                            }
+                        if let jsonString = String(data: data, encoding: .utf8),
+                           !jsonString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                           let jsonData = jsonString.data(using: .utf8),
+                           let dict = try? JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any] {
+                            continuation.resume(returning: dict)
+                        } else {
+                            continuation.resume(returning: nil)
                         }
+                    } catch {
+                        debugLog("MediaControlModule failed to run swift helper: \(error)")
+                        continuation.resume(returning: nil)
                     }
                 }
-            } catch {
-                debugLog("MediaControlModule failed to run swift helper: \(error)")
+            }
+        } onCancel: {
+            if process.isRunning {
+                process.terminate()
+            }
+        }
+    }
+    
+    @MainActor
+    private func updateState(with dict: [String: Any]?) {
+        guard let dict = dict else { return }
+        let oldTitle = self.title
+        let oldArtist = self.artist
+        let oldIsPlaying = self.isPlaying
+        
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            self.title = dict["title"] as? String ?? ""
+            self.artist = dict["artist"] as? String ?? ""
+            self.elapsedTime = dict["elapsedTime"] as? Double ?? 0.0
+            self.duration = dict["duration"] as? Double ?? 0.0
+            self.playbackRate = dict["playbackRate"] as? Double ?? 0.0
+            self.lastUpdateTimestamp = dict["timestamp"] as? Double ?? Date().timeIntervalSince1970
+            let rate = self.playbackRate
+            
+            debugLog("MediaControlModule swift helper parsed details: title='\(self.title)', artist='\(self.artist)', rate=\(rate), elapsed=\(self.elapsedTime), duration=\(self.duration)")
+            
+            if let artBase64 = dict["artwork"] as? String, !artBase64.isEmpty,
+               let artData = Data(base64Encoded: artBase64) {
+                self.artwork = NSImage(data: artData)
+            } else {
+                self.artwork = nil
+            }
+            
+            let hasValidTrack = !self.title.isEmpty && self.title != "Not Playing" && self.title != "No active track"
+            if rate > 0.0 {
+                self.isPlaying = true
+            } else if hasValidTrack {
+                self.isPlaying = true
+            } else {
+                self.isPlaying = false
+            }
+            
+            if oldTitle != self.title || oldArtist != self.artist || oldIsPlaying != self.isPlaying {
+                debugLog("MediaControlModule state changed via swift helper, notifying status change callback")
+                if oldTitle != self.title || oldArtist != self.artist {
+                    self.checkAndFetchLyrics()
+                }
+                self.onStatusChanged?()
             }
         }
     }
@@ -411,7 +444,10 @@ class MediaControlModule: IslandModule {
         
         debugLog("MediaControlModule starting fetch lyrics for: \(artistName) - \(trackName)")
         
-        Task {
+        lyricsTask?.cancel()
+        lyricsTask = Task {
+            if Task.isCancelled { return }
+            
             // 1. Try get API
             var components = URLComponents(string: "https://lrclib.net/api/get")!
             components.queryItems = [
@@ -423,9 +459,11 @@ class MediaControlModule: IslandModule {
             }
             
             guard let url = components.url else { return }
+            if Task.isCancelled { return }
             
             do {
                 let (data, response) = try await URLSession.shared.data(for: URLRequest(url: url))
+                if Task.isCancelled { return }
                 if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
                     if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
                         if let synced = json["syncedLyrics"] as? String, !synced.isEmpty {
@@ -438,6 +476,8 @@ class MediaControlModule: IslandModule {
                 debugLog("MediaControlModule get lyrics API error: \(error)")
             }
             
+            if Task.isCancelled { return }
+            
             // 2. Try search API
             var searchComponents = URLComponents(string: "https://lrclib.net/api/search")!
             searchComponents.queryItems = [
@@ -445,9 +485,11 @@ class MediaControlModule: IslandModule {
             ]
             
             guard let searchUrl = searchComponents.url else { return }
+            if Task.isCancelled { return }
             
             do {
                 let (data, response) = try await URLSession.shared.data(for: URLRequest(url: searchUrl))
+                if Task.isCancelled { return }
                 if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
                     if let array = try JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
                         let syncedItems = array.filter { !($0["syncedLyrics"] as? String ?? "").isEmpty }
@@ -463,12 +505,14 @@ class MediaControlModule: IslandModule {
                                 bestItem = syncedItems[0]
                             }
                             
+                            if Task.isCancelled { return }
                             if let synced = bestItem["syncedLyrics"] as? String {
                                 self.applyLyrics(synced: synced, plain: bestItem["plainLyrics"] as? String)
                                 return
                             }
                         }
                         
+                        if Task.isCancelled { return }
                         if let firstItem = array.first, let plain = firstItem["plainLyrics"] as? String {
                             self.applyLyrics(synced: nil, plain: plain)
                             return
@@ -484,18 +528,16 @@ class MediaControlModule: IslandModule {
     }
     
     private func applyLyrics(synced: String?, plain: String?) {
-        Task { @MainActor in
-            var parsed: [LyricLine] = []
-            if let synced = synced, !synced.isEmpty {
-                parsed = self.parseLRC(synced)
-            }
-            
-            self.lyricLines = parsed
-            self.plainLyrics = plain
-            
-            debugLog("MediaControlModule lyrics loaded: syncedCount=\(parsed.count), hasPlain=\(plain != nil)")
-            self.onStatusChanged?()
+        var parsed: [LyricLine] = []
+        if let synced = synced, !synced.isEmpty {
+            parsed = self.parseLRC(synced)
         }
+        
+        self.lyricLines = parsed
+        self.plainLyrics = plain
+        
+        debugLog("MediaControlModule lyrics loaded: syncedCount=\(parsed.count), hasPlain=\(plain != nil)")
+        self.onStatusChanged?()
     }
     
     private func parseLRC(_ lrc: String) -> [LyricLine] {
