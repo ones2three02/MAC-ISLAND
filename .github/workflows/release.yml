@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (without v, e.g., 1.1.0)'
+        required: true
+        default: '1.1.0'
 
 permissions:
   contents: write
@@ -12,6 +18,8 @@ permissions:
 jobs:
   build-and-release:
     runs-on: macos-26
+    env:
+      TAG_NAME: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', github.event.inputs.version) || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -19,7 +27,12 @@ jobs:
 
       - name: Extract version from tag
         id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${TAG_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Install dependencies
         run: |
@@ -207,8 +220,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$GITHUB_REF_NAME" \
-            --title "Open Island $GITHUB_REF_NAME" \
+          gh release create "$TAG_NAME" \
+            --title "Open Island $TAG_NAME" \
             --generate-notes \
             --notes-start-tag "$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo '')" \
             --draft \
@@ -220,13 +233,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NOTARIZED: ${{ steps.notarize.outputs.notarized }}
         run: |
-          existing="$(gh release view "$GITHUB_REF_NAME" --json body -q .body)"
+          existing="$(gh release view "$TAG_NAME" --json body -q .body)"
           if [[ "$NOTARIZED" == "true" ]]; then
             install_note="> This build is signed and notarized by Apple. It will launch without Gatekeeper warnings."
           else
             install_note="> This build is signed with a Developer ID certificate. On first launch, right-click → **Open** to bypass Gatekeeper."
           fi
-          gh release edit "$GITHUB_REF_NAME" --notes "$(cat <<EOF
+          gh release edit "$TAG_NAME" --notes "$(cat <<EOF
           ${existing}
 
           ---
