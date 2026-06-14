@@ -225,5 +225,11 @@
 "completion.done" = "Done";
 "completion.replyPlaceholder" = "Reply to %@…";
 
-/* Window Titles */
 "window.settings" = "Mac Island Settings";
+
+/* Settings - Music */
+"settings.tab.music" = "Music";
+"settings.music.defaultPlayer" = "Default Player";
+"settings.music.showLyrics" = "Show lyrics in compact mode";
+"settings.music.showLyricsDesc" = "Show real-time playing lyrics on the left side when the island is collapsed";
+"settings.music.selectApp" = "Select App…";

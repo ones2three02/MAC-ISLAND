@@ -30,8 +30,14 @@ protocol IslandModule: AnyObject {
     /// 折叠状态下在 Notch 左侧展示的视图
     func leftPillView() -> AnyView
     
+    /// 折叠状态下在 Notch 左侧展示的视图宽度，默认为 24
+    var leftPillWidth: CGFloat { get }
+    
     /// 折叠状态下在 Notch 右侧展示的视图
     func rightPillView() -> AnyView
+    
+    /// 折叠状态下在 Notch 右侧展示的视图宽度，默认为 0
+    var rightPillWidth: CGFloat { get }
     
     /// 展开状态下展示的完整内容卡片
     func expandedView() -> AnyView
@@ -41,6 +47,11 @@ protocol IslandModule: AnyObject {
     
     /// 模块失去焦点或隐藏时调用
     func onDeactivate()
+}
+
+extension IslandModule {
+    var leftPillWidth: CGFloat { 24 }
+    var rightPillWidth: CGFloat { 0 }
 }
 
 /// 灵动岛模块调度器，负责决策当前应该渲染哪个模块

@@ -28,6 +28,8 @@ final class AppModel {
     private static let legacyIslandSessionSortDefaultsKey = "appearance.island.v8.sessionSort"
     private static let legacyCompletedStaleThresholdDefaultsKey = "appearance.island.v8.completedStaleThreshold"
     private static let appearanceProfileSettingsDefaultsKey = "appearance.island.v8.settingsProfile"
+    private static let defaultMusicAppBundleIdentifierDefaultsKey = "defaultMusicAppBundleIdentifier"
+    private static let showLyricsOnClosedIslandDefaultsKey = "showLyricsOnClosedIsland"
 
     private static let syntheticClaudeSessionPrefix = "claude-process:"
     private static let liveSessionStalenessWindow: TimeInterval = 15 * 60
@@ -261,6 +263,18 @@ final class AppModel {
         didSet {
             guard hasFinishedInit, hapticFeedbackEnabled != oldValue else { return }
             UserDefaults.standard.set(hapticFeedbackEnabled, forKey: Self.hapticFeedbackEnabledDefaultsKey)
+        }
+    }
+    var defaultMusicAppBundleIdentifier: String = "com.apple.Music" {
+        didSet {
+            guard hasFinishedInit, defaultMusicAppBundleIdentifier != oldValue else { return }
+            UserDefaults.standard.set(defaultMusicAppBundleIdentifier, forKey: Self.defaultMusicAppBundleIdentifierDefaultsKey)
+        }
+    }
+    var showLyricsOnClosedIsland: Bool = true {
+        didSet {
+            guard hasFinishedInit, showLyricsOnClosedIsland != oldValue else { return }
+            UserDefaults.standard.set(showLyricsOnClosedIsland, forKey: Self.showLyricsOnClosedIslandDefaultsKey)
         }
     }
     var showCodexUsage: Bool = false {
@@ -608,12 +622,16 @@ final class AppModel {
             Self.hapticFeedbackEnabledDefaultsKey: false,
             Self.completionReplyEnabledDefaultsKey: false,
             Self.suppressFrontmostNotificationsDefaultsKey: true,
+            Self.defaultMusicAppBundleIdentifierDefaultsKey: "com.apple.Music",
+            Self.showLyricsOnClosedIslandDefaultsKey: true,
         ])
         isSoundMuted = UserDefaults.standard.bool(forKey: Self.soundMutedDefaultsKey)
         selectedSoundName = NotificationSoundService.selectedSoundName
         showDockIcon = UserDefaults.standard.bool(forKey: Self.showDockIconDefaultsKey)
         hapticFeedbackEnabled = UserDefaults.standard.bool(forKey: Self.hapticFeedbackEnabledDefaultsKey)
         suppressFrontmostNotifications = UserDefaults.standard.bool(forKey: Self.suppressFrontmostNotificationsDefaultsKey)
+        defaultMusicAppBundleIdentifier = UserDefaults.standard.string(forKey: Self.defaultMusicAppBundleIdentifierDefaultsKey) ?? "com.apple.Music"
+        showLyricsOnClosedIsland = UserDefaults.standard.bool(forKey: Self.showLyricsOnClosedIslandDefaultsKey)
         if UserDefaults.standard.object(forKey: Self.showCodexUsageDefaultsKey) != nil {
             showCodexUsage = UserDefaults.standard.bool(forKey: Self.showCodexUsageDefaultsKey)
         } else {

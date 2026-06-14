@@ -301,8 +301,9 @@ struct V6ClosedPill: View {
     // MARK: MacBook (outer width locked)
 
     private var macbookBody: some View {
-        let halfReserve: CGFloat = 44
-        let outer = halfReserve + physicalNotchWidth + halfReserve
+        let leftReserve = max(44, leftCustomViewWidth + pad)
+        let rightReserve = max(44, rightCustomViewWidth + pad)
+        let outer = leftReserve + physicalNotchWidth + rightReserve
 
         return ZStack {
             if drawBackground {

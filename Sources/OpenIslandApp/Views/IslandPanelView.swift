@@ -248,8 +248,8 @@ struct IslandPanelView: View {
                 return 44 + physicalNotchWidth + 44
             } else {
                 let activeModule = model.scheduler.activeModule
-                let leftWidth: CGFloat = activeModule?.id == "system_telemetry" ? 48 : 24
-                let rightWidth: CGFloat = activeModule?.id == "system_telemetry" ? 44 : 0
+                let leftWidth: CGFloat = activeModule?.leftPillWidth ?? 24
+                let rightWidth: CGFloat = activeModule?.rightPillWidth ?? 0
                 
                 let glyphW: CGFloat = activeModule != nil ? leftWidth : 24
                 let label = isExternalDisplayPlacement ? model.islandClosedLabel() : nil
@@ -374,8 +374,8 @@ struct IslandPanelView: View {
         let layout: V6ClosedLayout = isExternalDisplayPlacement ? .external : .macbook
         let physicalNotchWidth: CGFloat = targetOverlayScreen?.notchSize.width ?? 180
         let activeModule = model.scheduler.activeModule
-        let leftWidth: CGFloat = activeModule?.id == "system_telemetry" ? 48 : 24
-        let rightWidth: CGFloat = activeModule?.id == "system_telemetry" ? 44 : 0
+        let leftWidth: CGFloat = activeModule?.leftPillWidth ?? 24
+        let rightWidth: CGFloat = activeModule?.rightPillWidth ?? 0
         
         V6ClosedPill(
             mode: model.islandClosedMode,

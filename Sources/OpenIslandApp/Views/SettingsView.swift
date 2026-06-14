@@ -224,10 +224,78 @@ struct GeneralSettingsPane: View {
                     set: { model.suppressFrontmostNotifications = $0 }
                 ))
             }
+            
+            Section(lang.t("settings.tab.music")) {
+                Picker(lang.t("settings.music.defaultPlayer"), selection: Binding(
+                    get: { model.defaultMusicAppBundleIdentifier },
+                    set: { val in
+                        if val == "custom" {
+                            selectCustomApp()
+                        } else {
+                            model.defaultMusicAppBundleIdentifier = val
+                        }
+                    }
+                )) {
+                    Text("Apple Music").tag("com.apple.Music")
+                    Text("网易云音乐").tag("com.netease.163music")
+                    Text("QQ音乐").tag("com.tencent.QQMusic")
+                    Text("Spotify").tag("com.spotify.client")
+                    
+                    let knownIds = ["com.apple.Music", "com.netease.163music", "com.tencent.QQMusic", "com.spotify.client"]
+                    if !knownIds.contains(model.defaultMusicAppBundleIdentifier) {
+                        Text(customAppName).tag(model.defaultMusicAppBundleIdentifier)
+                    }
+                    
+                    Divider()
+                    Text(lang.t("settings.music.selectApp")).tag("custom")
+                }
+                
+                Toggle(lang.t("settings.music.showLyrics"), isOn: Binding(
+                    get: { model.showLyricsOnClosedIsland },
+                    set: { model.showLyricsOnClosedIsland = $0 }
+                ))
+                Text(lang.t("settings.music.showLyricsDesc"))
+                    .font(.caption)
+                    .foregroundStyle(.gray)
+            }
 
         }
         .formStyle(.grouped)
         .navigationTitle(lang.t("settings.tab.general"))
+    }
+    
+    private var customAppName: String {
+        let bid = model.defaultMusicAppBundleIdentifier
+        if bid == "com.apple.Music" { return "Apple Music" }
+        if bid == "com.netease.163music" { return "网易云音乐" }
+        if bid == "com.tencent.QQMusic" { return "QQ音乐" }
+        if bid == "com.spotify.client" { return "Spotify" }
+        
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bid) {
+            return url.deletingPathExtension().lastPathComponent
+        }
+        return bid
+    }
+    
+    private func selectCustomApp() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.application]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.title = lang.t("settings.music.selectApp")
+        
+        if panel.runModal() == .OK, let url = panel.url {
+            if let bundle = Bundle(url: url), let bundleId = bundle.bundleIdentifier {
+                model.defaultMusicAppBundleIdentifier = bundleId
+            } else {
+                let plistPath = url.appendingPathComponent("Contents/Info.plist")
+                if let dict = NSDictionary(contentsOf: plistPath),
+                   let bundleId = dict["CFBundleIdentifier"] as? String {
+                    model.defaultMusicAppBundleIdentifier = bundleId
+                }
+            }
+        }
     }
 }
 
