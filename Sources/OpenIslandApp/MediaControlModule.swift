@@ -196,9 +196,9 @@ class MediaControlModule: IslandModule {
         if isPlaying && showLyrics {
             let currentLyric = currentLyricText(at: currentPosition)
             if !currentLyric.isEmpty {
-                // Calculate dynamic text width based on character count
-                let textWidth = CGFloat(currentLyric.count) * 11.0
-                return min(180, max(60, textWidth)) + 30
+                // 使用固定的 160pt 宽度，避免灵动岛药丸因歌词长短不一而频繁抖动、缩放。
+                // 只有在进入/退出播歌或歌词有无状态切换时，才会有平滑的伸缩动画。
+                return 160
             }
         }
         return 24
@@ -235,12 +235,14 @@ class MediaControlModule: IslandModule {
                                 ))
                                 .id(currentLyric)
                         }
+                        .frame(maxWidth: self.rightPillWidth > 36 ? self.rightPillWidth - 36 : 0, alignment: .trailing)
                         .clipped()
                     }
                     
                     AudioWaveIndicator(isPlaying: self.isPlaying)
                         .frame(width: 24, alignment: .trailing)
                 }
+                .frame(width: self.rightPillWidth, alignment: .trailing)
                 .animation(.spring(response: 0.35, dampingFraction: 0.85), value: currentLyric)
             }
         )
