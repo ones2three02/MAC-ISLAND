@@ -75,14 +75,7 @@ final class AppModel {
 
     var notchStatus: NotchStatus {
         get { overlay.notchStatus }
-        set {
-            let old = overlay.notchStatus
-            overlay.notchStatus = newValue
-            if newValue != old {
-                scheduler.isOpened = (newValue == .opened)
-                scheduler.updateActiveModule()
-            }
-        }
+        set { overlay.notchStatus = newValue }
     }
     var notchOpenReason: NotchOpenReason? {
         get { overlay.notchOpenReason }
@@ -747,7 +740,6 @@ final class AppModel {
         scheduler.registerModule(mediaModule)
         
         scheduler.registerModule(TimerModule())
-        scheduler.isOpened = (notchStatus == .opened)
         scheduler.updateActiveModule()
         hasFinishedInit = true
     }

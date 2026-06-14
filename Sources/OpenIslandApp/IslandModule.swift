@@ -59,8 +59,6 @@ extension IslandModule {
 @Observable
 class IslandScheduler {
     var userLockedModuleId: String? = nil
-    var isOpened: Bool = false
-    var lastOpenedActiveModuleId: String = "agent_monitor"
 
     @ObservationIgnored
     var onActiveModuleChanged: (() -> Void)? = nil
@@ -75,10 +73,6 @@ class IslandScheduler {
             if activeModule?.id != oldValue?.id {
                 activeModule?.onActivate()
                 onActiveModuleChanged?()
-                
-                if isOpened, let newId = activeModule?.id {
-                    lastOpenedActiveModuleId = newId
-                }
             }
         }
     }
@@ -103,49 +97,23 @@ class IslandScheduler {
     
     /// 手动请求更新当前活跃的模块
     func updateActiveModule() {
-        if isOpened {
-            // 展开状态下的活跃模块选择逻辑：
-            // 优先选择 userLockedModuleId，如果为 nil，则选择 lastOpenedActiveModuleId 对应的模块
-            let targetId = userLockedModuleId ?? lastOpenedActiveModuleId
-            if let targetModule = modules.first(where: { $0.id == targetId }) {
-                if targetModule.id != activeModule?.id {
-                    activeModule = targetModule
-                }
-            } else {
-                let candidate = modules
-                    .filter { $0.priority > .low || (activeModule == nil && $0.priority == .low) || $0.id == activeModule?.id }
-                    .max(by: { $0.priority < $1.priority })
-                let target = candidate ?? modules.first
-                if target?.id != activeModule?.id {
-                    activeModule = target
-                }
-            }
-        } else {
-            // 折叠状态下的活跃模块选择逻辑：
-            // 如果有用户锁定的模块，直接使用它
-            if let lockedId = userLockedModuleId,
-               let lockedModule = modules.first(where: { $0.id == lockedId }) {
-                if activeModule?.id != lockedId {
-                    activeModule = lockedModule
-                }
-            } else {
-                // 如果没有手动锁定，当在播歌且开启了歌词，自动切换至音乐模块
-                let mediaModule = modules.first(where: { $0.id == "media_control" }) as? MediaControlModule
-                let showLyrics = UserDefaults.standard.bool(forKey: "showLyricsOnClosedIsland")
-                if let media = mediaModule, media.isPlaying, showLyrics {
-                    if activeModule?.id != "media_control" {
-                        activeModule = media
-                    }
-                } else {
-                    let candidate = modules
-                        .filter { $0.priority > .low || (activeModule == nil && $0.priority == .low) || $0.id == activeModule?.id }
-                        .max(by: { $0.priority < $1.priority })
-                    let target = candidate ?? modules.first
-                    if target?.id != activeModule?.id {
-                        activeModule = target
-                    }
-                }
-            }
+        // 寻找优先级最高，且非零激活状态的模块
+        let candidate = modules
+            .filter { $0.priority > .low || (activeModule == nil && $0.priority == .low) || $0.id == activeModule?.id }
+            .max(by: { $0.priority < $1.priority })
+        
+        var target = candidate ?? modules.first
+        
+        // 如果当前有用户锁定的模块，且最高候选模块的优先级尚未达到 .high (日常普通状态)
+        if let lockedId = userLockedModuleId,
+           let lockedModule = modules.first(where: { $0.id == lockedId }),
+           let highestPriority = target?.priority,
+           highestPriority < .high {
+            target = lockedModule
+        }
+        
+        if target?.id != activeModule?.id {
+            activeModule = target
         }
     }
     
