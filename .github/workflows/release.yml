@@ -91,6 +91,7 @@ jobs:
           OPEN_ISLAND_VERSION: ${{ steps.version.outputs.version }}
           OPEN_ISLAND_BUILD_NUMBER: ${{ github.run_number }}
           OPEN_ISLAND_SIGN_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          OPEN_ISLAND_EDDSA_PUBLIC_KEY: "3IF8txq9RRNanzE2FNhyGRcwhslTucCcJHpTkpxcgBQ="
           OPEN_ISLAND_UNIVERSAL: "true"
         run: zsh scripts/package-app.sh
 

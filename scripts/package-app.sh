@@ -113,7 +113,7 @@ cat > "$bundle_dir/Contents/Info.plist" <<EOF
     <key>SUFeedURL</key>
     <string>https://raw.githubusercontent.com/ones2three02/MAC-ISLAND/main/appcast.xml</string>
     <key>SUPublicEDKey</key>
-    <string>${OPEN_ISLAND_EDDSA_PUBLIC_KEY:-KzDAoTk37ThSgAbu3vc2om09NIAbsrIzNGghQ46uAaU=}</string>
+    <string>${OPEN_ISLAND_EDDSA_PUBLIC_KEY:-3IF8txq9RRNanzE2FNhyGRcwhslTucCcJHpTkpxcgBQ=}</string>
 </dict>
 </plist>
 EOF
