@@ -54,11 +54,29 @@ extension IslandModule {
     var rightPillWidth: CGFloat { 0 }
 }
 
+private func debugLog(_ message: String) {
+    let callStack = Thread.callStackSymbols.prefix(12).joined(separator: "\n    ")
+    let logMessage = "[\(Date())] [Scheduler] \(message)\n  CallStack:\n    \(callStack)\n"
+    if let data = logMessage.data(using: .utf8) {
+        if let handle = FileHandle(forWritingAtPath: "/tmp/openisland.log") {
+            handle.seekToEndOfFile()
+            handle.write(data)
+            handle.closeFile()
+        } else {
+            try? logMessage.write(toFile: "/tmp/openisland.log", atomically: true, encoding: .utf8)
+        }
+    }
+}
+
 /// 灵动岛模块调度器，负责决策当前应该渲染哪个模块
 @MainActor
 @Observable
 class IslandScheduler {
-    var userLockedModuleId: String? = nil
+    var userLockedModuleId: String? = nil {
+        didSet {
+            debugLog("userLockedModuleId changed from \(String(describing: oldValue)) to \(String(describing: userLockedModuleId))")
+        }
+    }
 
     @ObservationIgnored
     var onActiveModuleChanged: (() -> Void)? = nil
@@ -71,6 +89,7 @@ class IslandScheduler {
         }
         didSet {
             if activeModule?.id != oldValue?.id {
+                debugLog("activeModule changed from \(oldValue?.id ?? "nil") to \(activeModule?.id ?? "nil")")
                 activeModule?.onActivate()
                 onActiveModuleChanged?()
             }
@@ -103,6 +122,7 @@ class IslandScheduler {
             .max(by: { $0.priority < $1.priority })
         
         var target = candidate ?? modules.first
+        let targetBeforeLock = target?.id
         
         // 如果当前有用户锁定的模块，且最高候选模块的优先级尚未达到 .high (日常普通状态)
         if let lockedId = userLockedModuleId,
@@ -111,6 +131,8 @@ class IslandScheduler {
            highestPriority < .high {
             target = lockedModule
         }
+        
+        debugLog("updateActiveModule: modules=\(modules.map { "\($0.id)(\($0.priority.rawValue))" }.joined(separator: ", ")), candidate=\(candidate?.id ?? "nil"), userLockedModuleId=\(userLockedModuleId ?? "nil"), targetBeforeLock=\(targetBeforeLock ?? "nil"), finalTarget=\(target?.id ?? "nil")")
         
         if target?.id != activeModule?.id {
             activeModule = target
