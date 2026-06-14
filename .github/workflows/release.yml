@@ -40,11 +40,15 @@ jobs:
           pip3 install --break-system-packages Pillow
 
       - name: Import signing certificate
-        if: ${{ secrets.APPLE_CERTIFICATE_P12 != '' }}
         env:
           CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
           CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         run: |
+          if [[ -z "$CERTIFICATE_P12" ]]; then
+            echo "No signing certificate configured — skipping import."
+            exit 0
+          fi
+
           # Decode the p12 certificate from base64
           CERT_FILE="$(mktemp).p12"
           echo "$CERTIFICATE_P12" | base64 --decode > "$CERT_FILE"
@@ -128,12 +132,17 @@ jobs:
           echo "Bundle structure OK"
 
       - name: Notarize (best-effort)
-        if: ${{ vars.SKIP_NOTARIZE != 'true' && secrets.APPLE_CERTIFICATE_P12 != '' }}
+        if: vars.SKIP_NOTARIZE != 'true'
         id: notarize
         continue-on-error: true
         env:
           OPEN_ISLAND_APP_NAME: "Open Island"
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
         run: |
+          if [[ -z "$APPLE_CERTIFICATE_P12" ]]; then
+            echo "No signing certificate configured — skipping notarization."
+            exit 0
+          fi
           bundle="output/package/$OPEN_ISLAND_APP_NAME.app"
           zip_path="output/package/$OPEN_ISLAND_APP_NAME.zip"
           dmg_path="output/package/$OPEN_ISLAND_APP_NAME.dmg"
