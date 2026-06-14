@@ -188,74 +188,6 @@ struct MessageExpandedView: View {
             .scrollBounceBehavior(.basedOnSize)
             .scrollIndicators(.hidden)
             
-            Divider()
-                .background(Color.white.opacity(0.08))
-                .padding(.vertical, 4)
-            
-            // Webhook Info & Simulator Actions
-            VStack(spacing: 6) {
-                HStack {
-                    Image(systemName: "terminal.fill")
-                        .font(.system(size: 8))
-                        .foregroundStyle(.white.opacity(0.3))
-                    Text("本地 Webhook: http://localhost:5012/api/message")
-                        .font(.system(size: 8, design: .monospaced))
-                        .foregroundStyle(.white.opacity(0.35))
-                    
-                    Spacer()
-                    
-                    Button {
-                        copyCurlToClipboard()
-                    } label: {
-                        HStack(spacing: 2) {
-                            Image(systemName: "doc.on.doc")
-                                .font(.system(size: 7))
-                            Text("复制 curl")
-                        }
-                        .font(.system(size: 8))
-                        .foregroundStyle(Color.accentColor.opacity(0.8))
-                    }
-                    .buttonStyle(.plain)
-                }
-                
-                HStack(spacing: 6) {
-                    Button {
-                        module.addMessage(
-                            sender: "微信好友",
-                            content: randomWeChatMessage(),
-                            app: .wechat
-                        )
-                    } label: {
-                        Label("模拟微信", systemImage: "plus")
-                            .font(.system(size: 9))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4.5)
-                            .background(Color(red: 9/255, green: 187/255, blue: 7/255).opacity(0.15), in: Capsule())
-                            .overlay(Capsule().stroke(Color(red: 9/255, green: 187/255, blue: 7/255).opacity(0.3), lineWidth: 0.5))
-                            .foregroundStyle(Color(red: 9/255, green: 187/255, blue: 7/255))
-                    }
-                    .buttonStyle(.plain)
-                    
-                    Button {
-                        module.addMessage(
-                            sender: "飞书同事",
-                            content: randomLarkMessage(),
-                            app: .lark
-                        )
-                    } label: {
-                        Label("模拟飞书", systemImage: "plus")
-                            .font(.system(size: 9))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4.5)
-                            .background(Color(red: 45/255, green: 120/255, blue: 255/255).opacity(0.15), in: Capsule())
-                            .overlay(Capsule().stroke(Color(red: 45/255, green: 120/255, blue: 255/255).opacity(0.3), lineWidth: 0.5))
-                            .foregroundStyle(Color(red: 45/255, green: 120/255, blue: 255/255))
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.top, 2)
-            }
-            .padding(.horizontal, 4)
         }
     }
     
@@ -270,35 +202,6 @@ struct MessageExpandedView: View {
         case .other:
             return module.messages.filter { ($0.app == .slack || $0.app == .system) && $0.isUnread }.count
         }
-    }
-    
-    private func randomWeChatMessage() -> String {
-        let msgs = [
-            "晚上吃火锅还是烤肉？🥘",
-            "记得把刚才的代码提交一下哦~",
-            "OK，收到啦，明天见！",
-            "那个 Bug 我定位到了，等下发给你。"
-        ]
-        return msgs.randomElement() ?? "Hello!"
-    }
-    
-    private func randomLarkMessage() -> String {
-        let msgs = [
-            "针对今天下午的 PR，我在飞书发了具体的修改意见，查收下。",
-            "大家收到请回复下，多谢！",
-            "下周一的产品迭代评审会议时间定在下午2点。",
-            "麻烦帮我 review 一下刚才的提交："
-        ]
-        return msgs.randomElement() ?? "Lark message"
-    }
-    
-    private func copyCurlToClipboard() {
-        let curlCommand = """
-        curl -X POST -H "Content-Type: application/json" -d '{"sender":"王经理","content":"下午3点准时开会","source":"lark"}' http://localhost:5012/api/message
-        """
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(curlCommand, forType: .string)
     }
     
     private func openTargetApp(for app: AppMessage.MessageAppType) {

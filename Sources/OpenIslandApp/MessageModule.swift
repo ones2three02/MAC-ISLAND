@@ -51,7 +51,6 @@ final class MessageModule: IslandModule {
     let id = "message_center"
 
     var messages: [AppMessage] = []
-    private var webhookServer: MessageWebhookServer?
     private var systemNotificationObserver: SystemNotificationObserver?
     
     // 跟踪系统的辅助功能权限信任状态
@@ -133,7 +132,6 @@ final class MessageModule: IslandModule {
     }
 
     func onActivate() {
-        startWebhookServer()
         // 展开面板时刷新一次辅助功能权限状态
         isAccessibilityTrusted = AXIsProcessTrusted()
     }
@@ -175,26 +173,6 @@ final class MessageModule: IslandModule {
 
     func clearAllMessages() {
         messages.removeAll()
-    }
-
-    private func startWebhookServer() {
-        guard webhookServer == nil else { return }
-        let server = MessageWebhookServer(port: 5012) { [weak self] sender, content, app in
-            Task { @MainActor in
-                self?.addMessage(sender: sender, content: content, app: app)
-            }
-        }
-        do {
-            try server.start()
-            self.webhookServer = server
-        } catch {
-            print("Failed to start Message Webhook Server: \(error)")
-        }
-    }
-
-    func stopWebhookServer() {
-        webhookServer?.stop()
-        webhookServer = nil
     }
     
     private func startSystemNotificationObserver() {
