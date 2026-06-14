@@ -87,7 +87,7 @@ jobs:
       - name: Build and package (signed)
         env:
           OPEN_ISLAND_APP_NAME: "Mac Island"
-          OPEN_ISLAND_BUNDLE_ID: "app.openisland.MacIsland"
+          OPEN_ISLAND_BUNDLE_ID: "app.openisland.OpenIsland"
           OPEN_ISLAND_VERSION: ${{ steps.version.outputs.version }}
           OPEN_ISLAND_BUILD_NUMBER: ${{ github.run_number }}
           OPEN_ISLAND_SIGN_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
