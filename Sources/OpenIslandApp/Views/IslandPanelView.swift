@@ -1878,11 +1878,13 @@ private struct IslandSessionRow: View {
                    !session.id.hasPrefix("desktop_app:") {
                     sideBadge(terminalBadge)
                 }
-                Text(session.spotlightAgeBadge)
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundStyle(summaryAgeColor(for: presence))
-                    .frame(minWidth: 30, alignment: .trailing)
-                detailToggleButton(isOpen: showsDetail)
+                if !session.id.hasPrefix("desktop_app:") {
+                    Text(session.spotlightAgeBadge)
+                        .font(.system(size: 10, weight: .medium, design: .monospaced))
+                        .foregroundStyle(summaryAgeColor(for: presence))
+                        .frame(minWidth: 30, alignment: .trailing)
+                    detailToggleButton(isOpen: showsDetail)
+                }
                 if let onDismiss {
                     DismissButton(action: onDismiss)
                 }
@@ -1897,7 +1899,8 @@ private struct IslandSessionRow: View {
     @ViewBuilder
     private func rowAuxiliaryDetails(presence: IslandSessionPresence) -> some View {
         if !shouldShowEmbeddedDetailBody,
-           let activityLine = session.spotlightActivityLineText ?? expandedActivityLineText {
+           let activityLine = session.spotlightActivityLineText ?? expandedActivityLineText,
+           activityLine.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() != "ready" {
             Text(activityLine)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(activityColor(for: presence).opacity(0.94))
