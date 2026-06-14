@@ -1997,7 +1997,12 @@ private struct IslandSessionRow: View {
                 label = "Quota"
             }
             
-            let numbers = part.filter { "0123456789".contains($0) }
+            var cleanPart = part
+            if label != "Quota" {
+                cleanPart = cleanPart.replacingOccurrences(of: label, with: "")
+            }
+            
+            let numbers = cleanPart.filter { "0123456789".contains($0) }
             if let pct = Double(numbers) {
                 results.append((label: label, percentage: pct))
             }
