@@ -112,47 +112,52 @@ struct MessageExpandedView: View {
             .padding(.horizontal, 2)
             
             // Messages List
-            VStack(spacing: 6) {
-                if filteredMessages.isEmpty {
-                    VStack(spacing: 8) {
-                        Image(systemName: "message.badge.filled.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(.white.opacity(0.15))
-                        Text("暂无消息通知")
-                            .font(.system(size: 9))
-                            .foregroundStyle(.white.opacity(0.25))
-                    }
-                    .frame(height: 100)
-                    .frame(maxWidth: .infinity)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.white.opacity(0.02))
-                    )
-                } else {
-                    ForEach(filteredMessages) { msg in
-                        MessageRowView(
-                            msg: msg,
-                            isHovered: hoverMessageId == msg.id,
-                            onRead: {
-                                withAnimation {
-                                    module.markAsRead(id: msg.id)
-                                }
-                            },
-                            onDelete: {
-                                withAnimation {
-                                    module.deleteMessage(id: msg.id)
-                                }
-                            },
-                            onOpenApp: {
-                                openTargetApp(for: msg.app)
-                            }
+            ScrollView(.vertical) {
+                VStack(spacing: 6) {
+                    if filteredMessages.isEmpty {
+                        VStack(spacing: 8) {
+                            Image(systemName: "message.badge.filled.fill")
+                                .font(.system(size: 18))
+                                .foregroundStyle(.white.opacity(0.15))
+                            Text("暂无消息通知")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.white.opacity(0.25))
+                        }
+                        .frame(height: 100)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(Color.white.opacity(0.02))
                         )
-                        .onHover { isHovering in
-                            hoverMessageId = isHovering ? msg.id : nil
+                    } else {
+                        ForEach(filteredMessages) { msg in
+                            MessageRowView(
+                                msg: msg,
+                                isHovered: hoverMessageId == msg.id,
+                                onRead: {
+                                    withAnimation {
+                                        module.markAsRead(id: msg.id)
+                                    }
+                                },
+                                onDelete: {
+                                    withAnimation {
+                                        module.deleteMessage(id: msg.id)
+                                    }
+                                },
+                                onOpenApp: {
+                                    openTargetApp(for: msg.app)
+                                }
+                            )
+                            .onHover { isHovering in
+                                hoverMessageId = isHovering ? msg.id : nil
+                            }
                         }
                     }
                 }
             }
+            .frame(maxHeight: 160)
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollIndicators(.hidden)
             
             Divider()
                 .background(Color.white.opacity(0.08))

@@ -564,6 +564,9 @@ final class OverlayPanelController {
         case "timer":
             return 170
 
+        case "message_center":
+            return 280
+
         default:
             return Self.openedEmptyStateHeight
         }
