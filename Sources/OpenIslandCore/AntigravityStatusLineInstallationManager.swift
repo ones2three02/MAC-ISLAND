@@ -50,6 +50,71 @@ public final class AntigravityStatusLineInstallationManager: @unchecked Sendable
     public static let wrappedDelegateScriptName = "open-island-antigravity-statusline-delegate"
     public static let legacyManagedScriptName = "vibe-island-antigravity-statusline"
     public static let managedCacheURL = AntigravityUsageLoader.defaultCacheURL
+    public static let quotaHelperScriptName = "open-island-antigravity-quota-helper.py"
+
+    public static let quotaHelperScript = #"""
+        #!/usr/bin/env python3
+        # Antigravity Quota Helper
+        # Auto-configured by Mac Island
+        import subprocess
+        import re
+        import urllib.request
+        import json
+        import time
+        import sys
+
+        def get_ports():
+            try:
+                res = subprocess.check_output("lsof -i -P -n | grep -E 'agy|language_server' | grep -i listen", shell=True)
+                lines = res.decode('utf-8', errors='ignore').split('\n')
+                ports = []
+                for line in lines:
+                    m = re.search(r'TCP 127\.0\.0\.1:(\d+)', line)
+                    if m:
+                        ports.append(int(m.group(1)))
+                return list(set(ports))
+            except Exception:
+                return []
+
+        def main():
+            cache_path = sys.argv[1] if len(sys.argv) > 1 else "/tmp/open-island-antigravity-rl.json"
+            ports = get_ports()
+            for p in ports:
+                url = f"http://127.0.0.1:{p}/exa.language_server_pb.LanguageServerService/GetUserStatus"
+                try:
+                    req = urllib.request.Request(url, data=b'{}', method='POST')
+                    req.add_header('Content-Type', 'application/json')
+                    with urllib.request.urlopen(req, timeout=1.5) as resp:
+                        data = json.loads(resp.read().decode('utf-8'))
+                        user_status = data.get('userStatus', {})
+                        plan_status = user_status.get('planStatus', {})
+                        avail_prompt = plan_status.get('availablePromptCredits')
+                        avail_flow = plan_status.get('availableFlowCredits')
+                        if avail_prompt is not None and avail_flow is not None:
+                            five_hour_used = max(0, min(100, int(round(100 - (avail_prompt / 500.0 * 100)))))
+                            seven_day_used = max(0, min(100, int(round(100 - (avail_flow / 100.0 * 100)))))
+                            
+                            quota_data = {
+                                "five_hour": {
+                                    "used_percentage": five_hour_used,
+                                    "resets_at": int(time.time()) + 18000
+                                },
+                                "seven_day": {
+                                    "used_percentage": seven_day_used,
+                                    "resets_at": int(time.time()) + 604800
+                                }
+                            }
+                            
+                            with open(cache_path, "w") as f:
+                                json.dump(quota_data, f, indent=2)
+                            break
+                except Exception:
+                    pass
+
+        if __name__ == '__main__':
+            main()
+        """#
+
 
     public let antigravityDirectory: URL
     public let scriptDirectoryURL: URL
@@ -129,10 +194,14 @@ public final class AntigravityStatusLineInstallationManager: @unchecked Sendable
             try backupFile(at: settingsURL)
         }
 
-        let scriptContents = Self.managedScript(cacheURL: currentStatus.cacheURL)
+        let scriptContents = Self.managedScript(cacheURL: currentStatus.cacheURL, scriptDirectoryURL: scriptDirectoryURL)
         try settingsData.write(to: settingsURL, options: .atomic)
         try scriptContents.write(to: scriptURL, atomically: true, encoding: .utf8)
         try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
+
+        let helperURL = scriptDirectoryURL.appendingPathComponent(Self.quotaHelperScriptName)
+        try Self.quotaHelperScript.write(to: helperURL, atomically: true, encoding: .utf8)
+        try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: helperURL.path)
         let legacyScriptURL = legacyScriptDirectoryURL.appendingPathComponent(Self.legacyManagedScriptName)
         if fileManager.fileExists(atPath: legacyScriptURL.path) {
             try fileManager.removeItem(at: legacyScriptURL)
@@ -185,15 +254,20 @@ public final class AntigravityStatusLineInstallationManager: @unchecked Sendable
 
         let wrapperContents = Self.wrappedScript(
             cacheURL: currentStatus.cacheURL,
-            delegateScriptURL: delegateScriptURL
+            delegateScriptURL: delegateScriptURL,
+            scriptDirectoryURL: scriptDirectoryURL
         )
         let delegateContents = Self.wrappedDelegateScript(originalCommand: originalCommand)
-
+ 
         try settingsData.write(to: settingsURL, options: .atomic)
         try wrapperContents.write(to: scriptURL, atomically: true, encoding: .utf8)
         try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptURL.path)
         try delegateContents.write(to: delegateScriptURL, atomically: true, encoding: .utf8)
         try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: delegateScriptURL.path)
+
+        let helperURL = scriptDirectoryURL.appendingPathComponent(Self.quotaHelperScriptName)
+        try Self.quotaHelperScript.write(to: helperURL, atomically: true, encoding: .utf8)
+        try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: helperURL.path)
 
         // Write statusLine config to ~/.gemini/antigravity-cli in wrapper mode
         let home = FileManager.default.homeDirectoryForCurrentUser
@@ -241,6 +315,10 @@ public final class AntigravityStatusLineInstallationManager: @unchecked Sendable
         }
         if fileManager.fileExists(atPath: delegateScriptURL.path) {
             try fileManager.removeItem(at: delegateScriptURL)
+        }
+        let helperURL = scriptDirectoryURL.appendingPathComponent(Self.quotaHelperScriptName)
+        if fileManager.fileExists(atPath: helperURL.path) {
+            try fileManager.removeItem(at: helperURL)
         }
         let legacyScriptURL = legacyScriptDirectoryURL.appendingPathComponent(Self.legacyManagedScriptName)
         if fileManager.fileExists(atPath: legacyScriptURL.path) {
@@ -310,14 +388,19 @@ public final class AntigravityStatusLineInstallationManager: @unchecked Sendable
         try fileManager.copyItem(at: url, to: backupURL)
     }
 
-    public static func wrappedScript(cacheURL: URL, delegateScriptURL: URL) -> String {
+    public static func wrappedScript(
+        cacheURL: URL,
+        delegateScriptURL: URL,
+        scriptDirectoryURL: URL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".open-island", isDirectory: true)
+            .appendingPathComponent("bin", isDirectory: true)
+    ) -> String {
         #"""
         #!/bin/bash
         # Antigravity StatusLine Script (wrapper mode)
         # Auto-configured by Mac Island.
         input=$(cat)
-        _rl=$(printf '%s' "$input" | jq -c '.rate_limits // empty' 2>/dev/null)
-        [ -n "$_rl" ] && printf '%s\n' "$_rl" > "\#(cacheURL.path)"
+        python3 "\#(scriptDirectoryURL.path)/\#(quotaHelperScriptName)" "\#(cacheURL.path)" >/dev/null 2>&1 &
         printf '%s' "$input" | "\#(delegateScriptURL.path)"
         """#
     }
@@ -326,14 +409,18 @@ public final class AntigravityStatusLineInstallationManager: @unchecked Sendable
         "#!/bin/bash\n# Original Antigravity statusLine.command preserved by Mac Island.\n\(originalCommand)\n"
     }
 
-    public static func managedScript(cacheURL: URL = managedCacheURL) -> String {
+    public static func managedScript(
+        cacheURL: URL = managedCacheURL,
+        scriptDirectoryURL: URL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".open-island", isDirectory: true)
+            .appendingPathComponent("bin", isDirectory: true)
+    ) -> String {
         #"""
         #!/bin/bash
         # Antigravity StatusLine Script
         # Auto-configured by Mac Island
         input=$(cat)
-        _rl=$(echo "$input" | jq -c '.rate_limits // empty' 2>/dev/null)
-        [ -n "$_rl" ] && printf '%s\n' "$_rl" > "\#(cacheURL.path)"
+        python3 "\#(scriptDirectoryURL.path)/\#(quotaHelperScriptName)" "\#(cacheURL.path)" >/dev/null 2>&1 &
         echo "$input" | jq -r '"[\(.model.display_name // "Antigravity")] \(.context_window.used_percentage // 0)% context"' 2>/dev/null
         """#
     }
