@@ -96,6 +96,7 @@ final class AppModel {
     var claudeStatusLineStatus: ClaudeStatusLineInstallationStatus? { hooks.claudeStatusLineStatus }
     var claudeUsageSnapshot: ClaudeUsageSnapshot? { hooks.claudeUsageSnapshot }
     var antigravityUsageSnapshot: AntigravityUsageSnapshot? { hooks.antigravityUsageSnapshot }
+    var antigravityAccount: String? { AntigravityAccountLoader.loadEmail() }
     var codexUsageSnapshot: CodexUsageSnapshot? { hooks.codexUsageSnapshot }
     var hooksBinaryURL: URL? { hooks.hooksBinaryURL }
     var codexHooksInstalled: Bool { hooks.codexHooksInstalled }

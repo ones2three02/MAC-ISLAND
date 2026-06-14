@@ -648,7 +648,7 @@ struct IslandPanelView: View {
         let isChinese = model.lang.language.resolvedCode.hasPrefix("zh")
         switch id {
         case "agent_monitor":
-            return isChinese ? "助手" : "Agents"
+            return isChinese ? "AI" : "Agent"
         case "media_control":
             return isChinese ? "音乐" : "Music"
         case "timer":
@@ -1768,6 +1768,17 @@ private struct IslandSessionRow: View {
                             telemetryBadge(
                                 text: "PID \(pid)",
                                 icon: "cpu",
+                                textColor: .white.opacity(0.55),
+                                bgColor: .white.opacity(0.04),
+                                borderColor: .white.opacity(0.1)
+                            )
+                        }
+                        
+                        if session.id == "desktop_app:antigravity",
+                           let account = AntigravityAccountLoader.loadEmail() {
+                            telemetryBadge(
+                                text: account,
+                                icon: "envelope",
                                 textColor: .white.opacity(0.55),
                                 bgColor: .white.opacity(0.04),
                                 borderColor: .white.opacity(0.1)

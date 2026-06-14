@@ -35,6 +35,6 @@ public enum AntigravityConfigDirectory {
         }
         return FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".gemini", isDirectory: true)
-            .appendingPathComponent("antigravity-cli", isDirectory: true)
+            .appendingPathComponent("antigravity", isDirectory: true)
     }
 }
