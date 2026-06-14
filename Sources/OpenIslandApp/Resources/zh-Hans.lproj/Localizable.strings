@@ -225,5 +225,11 @@
 "completion.done" = "完成";
 "completion.replyPlaceholder" = "回复 %@…";
 
-/* Window Titles */
 "window.settings" = "Mac Island 设置";
+
+/* Settings - Music */
+"settings.tab.music" = "音乐";
+"settings.music.defaultPlayer" = "默认播放器";
+"settings.music.showLyrics" = "紧凑模式显示歌词";
+"settings.music.showLyricsDesc" = "当折叠灵动岛时，在左侧显示正在播放的实时歌词";
+"settings.music.selectApp" = "选择应用…";

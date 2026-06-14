@@ -559,7 +559,7 @@ final class OverlayPanelController {
             return 255
 
         case "media_control":
-            return 176
+            return 192
 
         case "timer":
             return 170
@@ -711,6 +711,30 @@ final class OverlayPanelController {
 private final class NotchPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
+
+    private var targetFrame: NSRect? = nil
+
+    override func setFrame(_ frameRect: NSRect, display displayFlag: Bool) {
+        // 如果窗口尚未显示，同步执行以防止首次展现时的视觉闪烁；
+        // 如果窗口已经显示，则将设置延迟至下一帧（Next Runloop），避免触发 AppKit 布局回环崩溃。
+        guard isVisible else {
+            super.setFrame(frameRect, display: displayFlag)
+            return
+        }
+
+        targetFrame = frameRect
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, let target = self.targetFrame else { return }
+            self.targetFrame = nil
+            if self.frame != target {
+                self.superSetFrame(target, display: displayFlag)
+            }
+        }
+    }
+
+    private func superSetFrame(_ frameRect: NSRect, display displayFlag: Bool) {
+        super.setFrame(frameRect, display: displayFlag)
+    }
 }
 
 // MARK: - NotchHostingView

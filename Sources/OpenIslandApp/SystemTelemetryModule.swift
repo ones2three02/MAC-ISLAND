@@ -16,6 +16,9 @@ class SystemTelemetryModule: IslandModule {
         return .low
     }
     
+    var leftPillWidth: CGFloat { 48 }
+    var rightPillWidth: CGFloat { 44 }
+    
     var cpuUsage: Double = 0.0
     var memoryUsage: Double = 0.0
     var downloadSpeed: Double = 0.0

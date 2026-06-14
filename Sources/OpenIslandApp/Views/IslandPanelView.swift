@@ -223,7 +223,7 @@ struct IslandPanelView: View {
                 }
             } else {
                 showingContent = false
-                model.scheduler.userLockedModuleId = nil
+                // model.scheduler.userLockedModuleId = nil
             }
         }
     }
@@ -243,26 +243,53 @@ struct IslandPanelView: View {
 
         let closedWidth: CGFloat = {
             let layout: V6ClosedLayout = isExternalDisplayPlacement ? .external : .macbook
+            
+            let effectiveModule = model.scheduler.activeModule
+            
             if layout == .macbook {
                 let physicalNotchWidth: CGFloat = targetOverlayScreen?.notchSize.width ?? 180
-                return 44 + physicalNotchWidth + 44
+                let leftWidth: CGFloat = effectiveModule?.leftPillWidth ?? 24
+                let rightWidth: CGFloat = effectiveModule?.rightPillWidth ?? 0
+                let pad = closedNotchHeight / 2
+                let leftReserve = max(44, leftWidth + pad)
+                let rightReserve = max(44, rightWidth + pad)
+                return leftReserve + physicalNotchWidth + rightReserve
             } else {
-                let activeModule = model.scheduler.activeModule
-                let leftWidth: CGFloat = activeModule?.id == "system_telemetry" ? 48 : 24
-                let rightWidth: CGFloat = activeModule?.id == "system_telemetry" ? 44 : 0
+                let leftWidth: CGFloat = effectiveModule?.leftPillWidth ?? 24
+                let rightWidth: CGFloat = effectiveModule?.rightPillWidth ?? 0
                 
-                let glyphW: CGFloat = activeModule != nil ? leftWidth : 24
+                let glyphW: CGFloat = effectiveModule != nil ? leftWidth : 24
                 let label = isExternalDisplayPlacement ? model.islandClosedLabel() : nil
                 let labelW = label.map { V6CenterLabelView.intrinsicWidth(of: $0) } ?? 0
                 
                 let rightSlot = model.islandClosedRightSlotContent()
-                let rightW = (activeModule != nil && rightWidth > 0) ? rightWidth : (rightSlot.map { V6RightSlotView.intrinsicWidth(of: $0) } ?? 0)
+                let rightW = (effectiveModule != nil && rightWidth > 0) ? rightWidth : (rightSlot.map { V6RightSlotView.intrinsicWidth(of: $0) } ?? 0)
                 
                 let labelBlock = (label == nil ? 0 : 6 + labelW)
-                let rightBlock = ((rightSlot == nil && (activeModule == nil || rightWidth == 0)) ? 0 : 6 + rightW)
+                let rightBlock = ((rightSlot == nil && (effectiveModule == nil || rightWidth == 0)) ? 0 : 6 + rightW)
                 let pad = closedNotchHeight / 2
                 let intrinsic = pad * 2 + glyphW + labelBlock + rightBlock
                 return max(70, intrinsic)
+            }
+        }()
+
+        let closedOffset: CGFloat = {
+            let layout: V6ClosedLayout = isExternalDisplayPlacement ? .external : .macbook
+            
+            let mediaModule = model.scheduler.getModules().first(where: { $0.id == "media_control" }) as? MediaControlModule
+            let showLyrics = UserDefaults.standard.bool(forKey: "showLyricsOnClosedIsland")
+            let shouldShowMediaPill = mediaModule?.isPlaying == true && showLyrics
+            let effectiveModule = shouldShowMediaPill ? mediaModule : model.scheduler.activeModule
+            
+            if layout == .macbook {
+                let leftWidth: CGFloat = effectiveModule?.leftPillWidth ?? 24
+                let rightWidth: CGFloat = effectiveModule?.rightPillWidth ?? 0
+                let pad = closedNotchHeight / 2
+                let leftReserve = max(44, leftWidth + pad)
+                let rightReserve = max(44, rightWidth + pad)
+                return (rightReserve - leftReserve) / 2
+            } else {
+                return 0
             }
         }()
 
@@ -276,6 +303,7 @@ struct IslandPanelView: View {
                 )
                 let currentWidth = usesOpenedVisualState ? openedWidth : closedWidth
                 let currentHeight = usesOpenedVisualState ? openedHeight : closedNotchHeight
+                let currentXOffset = usesOpenedVisualState ? 0 : closedOffset
                 
                 currentShape
                     .fill(Color.black)
@@ -302,6 +330,8 @@ struct IslandPanelView: View {
                         x: 0,
                         y: usesOpenedVisualState ? 3 : 1
                     )
+                    .offset(x: currentXOffset)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.85), value: currentWidth)
 
                 if shouldRenderOpenedSurface {
                     openedSurface(width: currentWidth, height: currentHeight)
@@ -317,8 +347,9 @@ struct IslandPanelView: View {
                     .clipShape(currentShape)
                     .opacity(usesOpenedVisualState ? 0 : 1)
                     .scaleEffect(usesOpenedVisualState ? 1.12 : 1.0, anchor: .top)
-                    .offset(y: usesOpenedVisualState ? 8 : 0)
+                    .offset(x: currentXOffset, y: usesOpenedVisualState ? 8 : 0)
                     .allowsHitTesting(!usesOpenedVisualState)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.85), value: currentWidth)
             }
             .frame(maxWidth: .infinity, alignment: .top)
         }
@@ -369,24 +400,36 @@ struct IslandPanelView: View {
     /// preferences. AppModel is @Observable so any change to sessions /
     /// preferences re-renders this automatically; UnifiedBars runs its own
     /// TimelineView internally for bar animation.
-    @ViewBuilder
     private func v6ClosedSurface() -> some View {
         let layout: V6ClosedLayout = isExternalDisplayPlacement ? .external : .macbook
         let physicalNotchWidth: CGFloat = targetOverlayScreen?.notchSize.width ?? 180
-        let activeModule = model.scheduler.activeModule
-        let leftWidth: CGFloat = activeModule?.id == "system_telemetry" ? 48 : 24
-        let rightWidth: CGFloat = activeModule?.id == "system_telemetry" ? 44 : 0
         
-        V6ClosedPill(
+        let effectiveModule = model.scheduler.activeModule
+        
+        let leftWidth: CGFloat = effectiveModule?.leftPillWidth ?? 24
+        let rightWidth: CGFloat = effectiveModule?.rightPillWidth ?? 0
+
+        let currentLabel: String? = {
+            if effectiveModule?.id == "media_control" {
+                if let media = effectiveModule as? MediaControlModule, !media.title.isEmpty, media.title != "Not Playing", media.title != "No active track" {
+                    return media.title
+                }
+                return nil
+            } else {
+                return layout == .external ? model.islandClosedLabel() : nil
+            }
+        }()
+        
+        return V6ClosedPill(
             mode: model.islandClosedMode,
-            label: layout == .external ? model.islandClosedLabel() : nil,
+            label: currentLabel,
             rightSlot: model.islandClosedRightSlotContent(),
             layout: layout,
             height: closedNotchHeight,
             physicalNotchWidth: layout == .macbook ? physicalNotchWidth : 0,
             minWidth: 70,
-            leftCustomView: activeModule.map { $0.leftPillView() },
-            rightCustomView: activeModule.map { $0.rightPillView() },
+            leftCustomView: effectiveModule.map { $0.leftPillView() },
+            rightCustomView: effectiveModule.map { $0.rightPillView() },
             leftCustomViewWidth: leftWidth,
             rightCustomViewWidth: rightWidth,
             drawBackground: false
