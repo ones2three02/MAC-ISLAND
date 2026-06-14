@@ -138,6 +138,20 @@ public final class AntigravityStatusLineInstallationManager: @unchecked Sendable
             try fileManager.removeItem(at: legacyScriptURL)
         }
 
+        // Write statusLine config to ~/.gemini/antigravity-cli for CLI tool compatibility
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let cliDir = home.appendingPathComponent(".gemini", isDirectory: true).appendingPathComponent("antigravity-cli", isDirectory: true)
+        if cliDir.path != antigravityDirectory.path {
+            try? fileManager.createDirectory(at: cliDir, withIntermediateDirectories: true)
+            let cliSettingsURL = cliDir.appendingPathComponent("settings.json")
+            let existingCliSettings = (try? loadSettings(at: cliSettingsURL)) ?? [:]
+            var mutatedCliSettings = existingCliSettings
+            mutatedCliSettings["statusLine"] = managedStatusLine(for: scriptURL)
+            if let settingsData = try? serializeSettings(mutatedCliSettings) {
+                try? settingsData.write(to: cliSettingsURL, options: .atomic)
+            }
+        }
+
         return try status()
     }
 
@@ -181,6 +195,22 @@ public final class AntigravityStatusLineInstallationManager: @unchecked Sendable
         try delegateContents.write(to: delegateScriptURL, atomically: true, encoding: .utf8)
         try fileManager.setAttributes([.posixPermissions: 0o755], ofItemAtPath: delegateScriptURL.path)
 
+        // Write statusLine config to ~/.gemini/antigravity-cli in wrapper mode
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let cliDir = home.appendingPathComponent(".gemini", isDirectory: true).appendingPathComponent("antigravity-cli", isDirectory: true)
+        if cliDir.path != antigravityDirectory.path {
+            try? fileManager.createDirectory(at: cliDir, withIntermediateDirectories: true)
+            let cliSettingsURL = cliDir.appendingPathComponent("settings.json")
+            var mutatedCliSettings = (try? loadSettings(at: cliSettingsURL)) ?? [:]
+            if let originalStatusLine = mutatedCliSettings["statusLine"] {
+                mutatedCliSettings[openIslandOriginalStatusLineKey] = originalStatusLine
+            }
+            mutatedCliSettings["statusLine"] = managedStatusLine(for: scriptURL)
+            if let settingsData = try? serializeSettings(mutatedCliSettings) {
+                try? settingsData.write(to: cliSettingsURL, options: .atomic)
+            }
+        }
+
         return try status()
     }
 
@@ -215,6 +245,26 @@ public final class AntigravityStatusLineInstallationManager: @unchecked Sendable
         let legacyScriptURL = legacyScriptDirectoryURL.appendingPathComponent(Self.legacyManagedScriptName)
         if fileManager.fileExists(atPath: legacyScriptURL.path) {
             try fileManager.removeItem(at: legacyScriptURL)
+        }
+
+        // Clean up statusLine config in ~/.gemini/antigravity-cli
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let cliDir = home.appendingPathComponent(".gemini", isDirectory: true).appendingPathComponent("antigravity-cli", isDirectory: true)
+        if cliDir.path != antigravityDirectory.path {
+            let cliSettingsURL = cliDir.appendingPathComponent("settings.json")
+            if var cliSettings = try? loadSettings(at: cliSettingsURL) {
+                if cliSettings[openIslandOriginalStatusLineKey] != nil || cliSettings["statusLine"] != nil {
+                    if let savedOriginal = cliSettings[openIslandOriginalStatusLineKey] {
+                        cliSettings["statusLine"] = savedOriginal
+                        cliSettings.removeValue(forKey: openIslandOriginalStatusLineKey)
+                    } else {
+                        cliSettings.removeValue(forKey: "statusLine")
+                    }
+                    if let settingsData = try? serializeSettings(cliSettings) {
+                        try? settingsData.write(to: cliSettingsURL, options: .atomic)
+                    }
+                }
+            }
         }
 
         return try status()
