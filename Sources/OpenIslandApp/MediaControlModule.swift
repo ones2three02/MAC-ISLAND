@@ -927,29 +927,39 @@ struct ClosedIslandMarqueeText: View {
     var body: some View {
         let textWidth = CGFloat(text.count) * 9.5 // 9.5pt per character at font size 9
         let isTooLong = textWidth > containerWidth
-        let scrollDistance = textWidth - containerWidth + 8
+        let spacing: CGFloat = 30
+        let scrollDistance = textWidth + spacing
         
-        Text(text)
-            .font(.system(size: 9, weight: .medium))
-            .foregroundStyle(.white.opacity(0.9))
-            .lineLimit(1)
-            .offset(x: isTooLong ? offset : 0)
-            .frame(width: isTooLong ? textWidth : nil, alignment: .trailing)
-            .task(id: text) {
-                offset = 0
-                guard isTooLong else { return }
-                
-                // 停留 1.0 秒让用户看清开头
-                do {
-                    try await Task.sleep(for: .seconds(1.0))
-                } catch {
-                    return // 如果在此期间歌词变了，任务取消，直接返回
-                }
-                
-                // 平滑滚动
-                withAnimation(.linear(duration: Double(scrollDistance) / 18.0).repeatForever(autoreverses: true)) {
-                    offset = -scrollDistance
-                }
+        HStack(spacing: spacing) {
+            Text(text)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundStyle(.white.opacity(0.9))
+                .lineLimit(1)
+            
+            if isTooLong {
+                Text(text)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.9))
+                    .lineLimit(1)
             }
+        }
+        .offset(x: isTooLong ? offset : 0)
+        .frame(width: isTooLong ? (textWidth * 2 + spacing) : nil, alignment: .trailing)
+        .task(id: text) {
+            offset = 0
+            guard isTooLong else { return }
+            
+            // 停留 1.5 秒让用户看清开头
+            do {
+                try await Task.sleep(for: .seconds(1.5))
+            } catch {
+                return // 如果在此期间歌词变了，任务取消，直接返回
+            }
+            
+            // 平滑滚动，使用 repeatForever(autoreverses: false) 达到单向无限无缝循环
+            withAnimation(.linear(duration: Double(scrollDistance) / 18.0).repeatForever(autoreverses: false)) {
+                offset = -scrollDistance
+            }
+        }
     }
 }
