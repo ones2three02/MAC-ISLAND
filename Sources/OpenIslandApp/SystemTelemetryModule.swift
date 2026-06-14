@@ -28,16 +28,44 @@ class SystemTelemetryModule: IslandModule {
     var publicIP: String = "Loading..."
     var location: String = "Loading..."
     
+    var memoryUsed: UInt64 = 0
+    var memoryTotal: UInt64 = 0
+    
+    var diskUsage: Double = 0.0
+    var diskUsed: UInt64 = 0
+    var diskTotal: UInt64 = 0
+    var cpuCores: Int = 1
+    
     private let cpuMonitor = CpuMonitor()
     private let memoryMonitor = MemoryMonitor()
     private let netMonitor = NetworkMonitor()
+    private let diskMonitor = DiskMonitor()
     private var timer: Timer?
     private var isActive = false
     
     init() {
+        // 获取 CPU 核心数
+        var cores: uint32 = 0
+        var size = MemoryLayout<uint32>.size
+        if sysctlbyname("hw.ncpu", &cores, &size, nil, 0) == 0 {
+            cpuCores = Int(cores)
+        } else {
+            cpuCores = 1
+        }
+        
         // 预热数据
-        _ = cpuMonitor.getCpuUsage()
-        _ = memoryMonitor.getMemoryUsage()
+        cpuUsage = cpuMonitor.getCpuUsage()
+        
+        let memDetails = memoryMonitor.getMemoryDetails()
+        memoryUsage = memDetails.percentage
+        memoryUsed = memDetails.used
+        memoryTotal = memDetails.total
+        
+        let diskDetails = diskMonitor.getDiskUsage()
+        diskUsage = diskDetails.percentage
+        diskUsed = diskDetails.used
+        diskTotal = diskDetails.total
+        
         _ = netMonitor.getNetworkSpeed()
     }
     
@@ -101,7 +129,17 @@ class SystemTelemetryModule: IslandModule {
     
     private func tick() {
         cpuUsage = cpuMonitor.getCpuUsage()
-        memoryUsage = memoryMonitor.getMemoryUsage()
+        
+        let memDetails = memoryMonitor.getMemoryDetails()
+        memoryUsage = memDetails.percentage
+        memoryUsed = memDetails.used
+        memoryTotal = memDetails.total
+        
+        let diskDetails = diskMonitor.getDiskUsage()
+        diskUsage = diskDetails.percentage
+        diskUsed = diskDetails.used
+        diskTotal = diskDetails.total
+        
         let speeds = netMonitor.getNetworkSpeed()
         downloadSpeed = speeds.downloadSpeed
         uploadSpeed = speeds.uploadSpeed
@@ -262,6 +300,39 @@ class SystemTelemetryModule: IslandModule {
             }
         }
     }
+    
+    // 格式化 Memory & Disk 大小
+    var formattedMemoryUsed: String {
+        formatGBPrecise(memoryUsed)
+    }
+    
+    var formattedMemoryTotal: String {
+        formatGB(memoryTotal)
+    }
+    
+    var formattedDiskUsed: String {
+        formatGBPrecise(diskUsed)
+    }
+    
+    var formattedDiskTotal: String {
+        formatGB(diskTotal)
+    }
+    
+    private func formatGB(_ bytes: UInt64) -> String {
+        let gb = Double(bytes) / 1_073_741_824.0
+        if gb >= 1000 {
+            return String(format: "%.0fT", gb / 1024.0)
+        }
+        return String(format: "%.0fG", gb)
+    }
+    
+    private func formatGBPrecise(_ bytes: UInt64) -> String {
+        let gb = Double(bytes) / 1_073_741_824.0
+        if gb >= 1000 {
+            return String(format: "%.1fT", gb / 1024.0)
+        }
+        return String(format: "%.1fG", gb)
+    }
 }
 
 // MARK: - SwiftUI Views for Telemetry
@@ -343,79 +414,126 @@ struct SystemTelemetryExpandedView: View {
                 )
             }
             
-            HStack(spacing: 12) {
-            // CPU Panel
-            VStack(spacing: 6) {
-                ZStack {
-                    Circle()
-                        .stroke(Color.white.opacity(0.08), lineWidth: 4)
-                    Circle()
-                        .trim(from: 0.0, to: CGFloat(min(module.cpuUsage / 100.0, 1.0)))
-                        .stroke(
-                            AngularGradient(
-                                gradient: Gradient(colors: [.green, .yellow, .red]),
-                                center: .center
-                            ),
-                            style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-                        .animation(.easeInOut, value: module.cpuUsage)
-                    
-                    VStack {
-                        Text(String(format: "%.0f%%", module.cpuUsage))
-                           .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        Text("CPU")
-                            .font(.system(size: 7, weight: .medium))
-                            .foregroundStyle(.gray)
+            HStack(spacing: 8) {
+                // CPU Panel
+                VStack(spacing: 6) {
+                    ZStack {
+                        Circle()
+                            .stroke(Color.white.opacity(0.08), lineWidth: 4)
+                        Circle()
+                            .trim(from: 0.0, to: CGFloat(min(module.cpuUsage / 100.0, 1.0)))
+                            .stroke(
+                                AngularGradient(
+                                    gradient: Gradient(colors: [.green, .yellow, .red]),
+                                    center: .center
+                                ),
+                                style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                            )
+                            .rotationEffect(.degrees(-90))
+                            .animation(.easeInOut, value: module.cpuUsage)
+                        
+                        VStack {
+                            Text(String(format: "%.0f%%", module.cpuUsage))
+                               .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            Text("CPU")
+                                .font(.system(size: 7, weight: .medium))
+                                .foregroundStyle(.gray)
+                        }
                     }
-                }
-                .frame(width: 50, height: 50)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(Color.white.opacity(0.03), in: RoundedRectangle(cornerRadius: 8))
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.white.opacity(0.04), lineWidth: 0.5)
-            )
-            
-            // Memory Panel
-            VStack(spacing: 6) {
-                ZStack {
-                    Circle()
-                        .stroke(Color.white.opacity(0.08), lineWidth: 4)
-                    Circle()
-                        .trim(from: 0.0, to: CGFloat(min(module.memoryUsage / 100.0, 1.0)))
-                        .stroke(
-                            AngularGradient(
-                                gradient: Gradient(colors: [.blue, Color(red: 90/255, green: 154/255, blue: 255/255), .purple]),
-                                center: .center
-                            ),
-                            style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-                        .animation(.easeInOut, value: module.memoryUsage)
+                    .frame(width: 50, height: 50)
                     
-                    VStack {
-                        Text(String(format: "%.0f%%", module.memoryUsage))
-                           .font(.system(size: 12, weight: .bold, design: .monospaced))
-                        Text("MEM")
-                            .font(.system(size: 7, weight: .medium))
-                            .foregroundStyle(.gray)
-                    }
+                    Text("\(module.cpuCores) Cores")
+                        .font(.system(size: 7.5, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.5))
                 }
-                .frame(width: 50, height: 50)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(Color.white.opacity(0.03), in: RoundedRectangle(cornerRadius: 8))
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.white.opacity(0.04), lineWidth: 0.5)
-            )
-            
-            // Network Panel
-            VStack(alignment: .leading, spacing: 6) {
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(Color.white.opacity(0.03), in: RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.white.opacity(0.04), lineWidth: 0.5)
+                )
+                
+                // Memory Panel
+                VStack(spacing: 6) {
+                    ZStack {
+                        Circle()
+                            .stroke(Color.white.opacity(0.08), lineWidth: 4)
+                        Circle()
+                            .trim(from: 0.0, to: CGFloat(min(module.memoryUsage / 100.0, 1.0)))
+                            .stroke(
+                                AngularGradient(
+                                    gradient: Gradient(colors: [.blue, Color(red: 90/255, green: 154/255, blue: 255/255), .purple]),
+                                    center: .center
+                                ),
+                                style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                            )
+                            .rotationEffect(.degrees(-90))
+                            .animation(.easeInOut, value: module.memoryUsage)
+                        
+                        VStack {
+                            Text(String(format: "%.0f%%", module.memoryUsage))
+                               .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            Text("MEM")
+                                .font(.system(size: 7, weight: .medium))
+                                .foregroundStyle(.gray)
+                        }
+                    }
+                    .frame(width: 50, height: 50)
+                    
+                    Text("\(module.formattedMemoryUsed)/\(module.formattedMemoryTotal)")
+                        .font(.system(size: 7.5, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.5))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(Color.white.opacity(0.03), in: RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.white.opacity(0.04), lineWidth: 0.5)
+                )
+                
+                // Disk Panel
+                VStack(spacing: 6) {
+                    ZStack {
+                        Circle()
+                            .stroke(Color.white.opacity(0.08), lineWidth: 4)
+                        Circle()
+                            .trim(from: 0.0, to: CGFloat(min(module.diskUsage / 100.0, 1.0)))
+                            .stroke(
+                                AngularGradient(
+                                    gradient: Gradient(colors: [.teal, Color(red: 90/255, green: 220/255, blue: 220/255), .cyan]),
+                                    center: .center
+                                ),
+                                style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                            )
+                            .rotationEffect(.degrees(-90))
+                            .animation(.easeInOut, value: module.diskUsage)
+                        
+                        VStack {
+                            Text(String(format: "%.0f%%", module.diskUsage))
+                               .font(.system(size: 12, weight: .bold, design: .monospaced))
+                            Text("DISK")
+                                .font(.system(size: 7, weight: .medium))
+                                .foregroundStyle(.gray)
+                        }
+                    }
+                    .frame(width: 50, height: 50)
+                    
+                    Text("\(module.formattedDiskUsed)/\(module.formattedDiskTotal)")
+                        .font(.system(size: 7.5, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.white.opacity(0.5))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(Color.white.opacity(0.03), in: RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.white.opacity(0.04), lineWidth: 0.5)
+                )
+                
+                // Network Panel
+                VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         Image(systemName: "arrow.down.circle.fill")
                             .foregroundStyle(.blue)
@@ -424,7 +542,7 @@ struct SystemTelemetryExpandedView: View {
                                 .font(.system(size: 8, weight: .semibold))
                                 .foregroundStyle(.gray)
                             Text(formatSpeedFull(module.downloadSpeed))
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
                         }
                     }
                     
@@ -438,12 +556,12 @@ struct SystemTelemetryExpandedView: View {
                                 .font(.system(size: 8, weight: .semibold))
                                 .foregroundStyle(.gray)
                             Text(formatSpeedFull(module.uploadSpeed))
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .font(.system(size: 10, weight: .bold, design: .monospaced))
                         }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 10)
                 .padding(.vertical, 8)
                 .background(Color.white.opacity(0.03), in: RoundedRectangle(cornerRadius: 8))
                 .overlay(
@@ -451,6 +569,7 @@ struct SystemTelemetryExpandedView: View {
                         .stroke(Color.white.opacity(0.04), lineWidth: 0.5)
                 )
             }
+            .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -582,8 +701,18 @@ private class NetworkMonitor {
     }
 }
 
+struct MemoryDetails {
+    let percentage: Double
+    let used: UInt64
+    let total: UInt64
+}
+
 private class MemoryMonitor {
     func getMemoryUsage() -> Double {
+        return getMemoryDetails().percentage
+    }
+    
+    func getMemoryDetails() -> MemoryDetails {
         var stats = vm_statistics64()
         var count = mach_msg_type_number_t(MemoryLayout<vm_statistics64_data_t>.size / MemoryLayout<integer_t>.size)
         
@@ -593,20 +722,48 @@ private class MemoryMonitor {
             }
         }
         
-        guard kerr == KERN_SUCCESS else { return 0.0 }
+        guard kerr == KERN_SUCCESS else {
+            return MemoryDetails(percentage: 0.0, used: 0, total: 0)
+        }
         
         var pageSize: vm_size_t = 0
         host_page_size(mach_host_self(), &pageSize)
         
         let totalMemory = ProcessInfo.processInfo.physicalMemory
-        let freePages = UInt64(stats.free_count)
-        let speculativePages = UInt64(stats.speculative_count)
-        let availableMemory = (freePages + speculativePages) * UInt64(pageSize)
+        
+        // macOS Activity Monitor standard calculation:
+        // App Memory = internal_page_count - purgeable_count
+        // Wired Memory = wire_count
+        // Compressed Memory = compressor_page_count
+        let appPages = stats.internal_page_count > stats.purgeable_count ? (stats.internal_page_count - stats.purgeable_count) : 0
+        let appMemory = UInt64(appPages) * UInt64(pageSize)
+        let wiredMemory = UInt64(stats.wire_count) * UInt64(pageSize)
+        let compressedMemory = UInt64(stats.compressor_page_count) * UInt64(pageSize)
+        
+        let usedMemory = appMemory + wiredMemory + compressedMemory
+        let safeUsedMemory = min(totalMemory, usedMemory)
         
         if totalMemory > 0 {
-            let usedMemory = totalMemory - min(totalMemory, availableMemory)
-            return (Double(usedMemory) / Double(totalMemory)) * 100.0
+            let percentage = (Double(safeUsedMemory) / Double(totalMemory)) * 100.0
+            return MemoryDetails(percentage: percentage, used: safeUsedMemory, total: totalMemory)
         }
-        return 0.0
+        return MemoryDetails(percentage: 0.0, used: 0, total: 0)
+    }
+}
+
+private class DiskMonitor {
+    func getDiskUsage() -> (total: UInt64, free: UInt64, used: UInt64, percentage: Double) {
+        do {
+            let attrs = try FileManager.default.attributesOfFileSystem(forPath: "/")
+            if let total = attrs[.systemSize] as? UInt64,
+               let free = attrs[.systemFreeSize] as? UInt64 {
+                let used = total - free
+                let percentage = total > 0 ? (Double(used) / Double(total)) * 100.0 : 0.0
+                return (total, free, used, percentage)
+            }
+        } catch {
+            // fallback
+        }
+        return (0, 0, 0, 0.0)
     }
 }
