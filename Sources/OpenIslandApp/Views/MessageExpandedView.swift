@@ -111,6 +111,35 @@ struct MessageExpandedView: View {
             }
             .padding(.horizontal, 2)
             
+            if !module.isAccessibilityTrusted {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.orange)
+                    Text("未授权辅助功能。系统微信/飞书消息将无法在此显示。")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.white.opacity(0.7))
+                        .lineLimit(1)
+                    
+                    Spacer(minLength: 0)
+                    
+                    Button {
+                        openAccessibilitySettings()
+                    } label: {
+                        Text("去授权")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.orange.opacity(0.25), lineWidth: 0.5))
+                .padding(.horizontal, 2)
+                .padding(.bottom, 2)
+            }
+            
             // Messages List
             ScrollView(.vertical) {
                 VStack(spacing: 6) {
@@ -294,6 +323,11 @@ struct MessageExpandedView: View {
                 NSWorkspace.shared.openApplication(at: larkURL, configuration: NSWorkspace.OpenConfiguration())
             }
         }
+    }
+    
+    private func openAccessibilitySettings() {
+        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
+        NSWorkspace.shared.open(url)
     }
 }
 

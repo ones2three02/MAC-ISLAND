@@ -52,6 +52,10 @@ final class MessageModule: IslandModule {
 
     var messages: [AppMessage] = []
     private var webhookServer: MessageWebhookServer?
+    private var systemNotificationObserver: SystemNotificationObserver?
+    
+    // 跟踪系统的辅助功能权限信任状态
+    var isAccessibilityTrusted: Bool = AXIsProcessTrusted()
 
     init() {
         // 提供初始的示例消息，展示排版效果与 Vibe 质感
@@ -74,6 +78,9 @@ final class MessageModule: IslandModule {
                 isUnread: true
             )
         ]
+        
+        // 初始化时立刻启动系统通知的 Accessibility 监听器
+        startSystemNotificationObserver()
     }
 
     var priority: IslandModulePriority {
@@ -127,10 +134,12 @@ final class MessageModule: IslandModule {
 
     func onActivate() {
         startWebhookServer()
+        // 展开面板时刷新一次辅助功能权限状态
+        isAccessibilityTrusted = AXIsProcessTrusted()
     }
 
     func onDeactivate() {
-        // 保留消息，以便用户随时查看
+        // 保留消息和后台监听，使用户不会漏掉消息
     }
 
     func addMessage(sender: String, content: String, app: AppMessage.MessageAppType) {
@@ -143,6 +152,9 @@ final class MessageModule: IslandModule {
             isUnread: true
         )
         messages.insert(newMessage, at: 0)
+        
+        // 触发声音及全局灵动岛调度更新
+        NSSound.beep()
     }
 
     func markAsRead(id: UUID) {
@@ -183,5 +195,21 @@ final class MessageModule: IslandModule {
     func stopWebhookServer() {
         webhookServer?.stop()
         webhookServer = nil
+    }
+    
+    private func startSystemNotificationObserver() {
+        guard systemNotificationObserver == nil else { return }
+        let observer = SystemNotificationObserver { [weak self] sender, content, app in
+            Task { @MainActor in
+                self?.addMessage(sender: sender, content: content, app: app)
+            }
+        }
+        observer.start()
+        self.systemNotificationObserver = observer
+    }
+    
+    func stopSystemNotificationObserver() {
+        systemNotificationObserver?.stop()
+        systemNotificationObserver = nil
     }
 }
