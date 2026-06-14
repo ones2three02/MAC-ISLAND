@@ -244,11 +244,7 @@ struct IslandPanelView: View {
         let closedWidth: CGFloat = {
             let layout: V6ClosedLayout = isExternalDisplayPlacement ? .external : .macbook
             
-            let mediaModule = model.scheduler.getModules().first(where: { $0.id == "media_control" }) as? MediaControlModule
-            let showLyrics = UserDefaults.standard.bool(forKey: "showLyricsOnClosedIsland")
-            // 当展开或正在展开时，折叠态内容强制与 activeModule 保持一致，防止图层过渡时内容不一引起的重叠闪烁
-            let shouldShowMediaPill = mediaModule?.isPlaying == true && showLyrics && !usesOpenedVisualState
-            let effectiveModule = shouldShowMediaPill ? mediaModule : model.scheduler.activeModule
+            let effectiveModule = model.scheduler.activeModule
             
             if layout == .macbook {
                 let physicalNotchWidth: CGFloat = targetOverlayScreen?.notchSize.width ?? 180
@@ -408,11 +404,7 @@ struct IslandPanelView: View {
         let layout: V6ClosedLayout = isExternalDisplayPlacement ? .external : .macbook
         let physicalNotchWidth: CGFloat = targetOverlayScreen?.notchSize.width ?? 180
         
-        let mediaModule = model.scheduler.getModules().first(where: { $0.id == "media_control" }) as? MediaControlModule
-        let showLyrics = UserDefaults.standard.bool(forKey: "showLyricsOnClosedIsland")
-        // 当展开或正在展开时，折叠态内容强制与 activeModule 保持一致，防止图层过渡时内容不一引起的重叠闪烁
-        let shouldShowMediaPill = mediaModule?.isPlaying == true && showLyrics && !usesOpenedVisualState
-        let effectiveModule = shouldShowMediaPill ? mediaModule : model.scheduler.activeModule
+        let effectiveModule = model.scheduler.activeModule
         
         let leftWidth: CGFloat = effectiveModule?.leftPillWidth ?? 24
         let rightWidth: CGFloat = effectiveModule?.rightPillWidth ?? 0
