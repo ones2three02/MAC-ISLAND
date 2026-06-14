@@ -91,7 +91,7 @@ jobs:
           OPEN_ISLAND_VERSION: ${{ steps.version.outputs.version }}
           OPEN_ISLAND_BUILD_NUMBER: ${{ github.run_number }}
           OPEN_ISLAND_SIGN_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          OPEN_ISLAND_EDDSA_PUBLIC_KEY: "3IF8txq9RRNanzE2FNhyGRcwhslTucCcJHpTkpxcgBQ="
+          OPEN_ISLAND_EDDSA_PUBLIC_KEY: "KzDAoTk37ThSgAbu3vc2om09NIAbsrIzNGghQ46uAaU="
           OPEN_ISLAND_UNIVERSAL: "true"
         run: zsh scripts/package-app.sh
 
@@ -193,41 +193,6 @@ jobs:
           echo "signed=true" >> "$GITHUB_OUTPUT"
           echo "EdDSA signature: $ed_signature (length: $length)"
 
-      - name: 'Debug: Print Sparkle Public Key'
-        env:
-          SPARKLE_EDDSA_KEY: ${{ secrets.SPARKLE_EDDSA_KEY }}
-        run: |
-          node -e '
-          const crypto = require("crypto");
-          const privateKeyStr = process.env.SPARKLE_EDDSA_KEY;
-          if (!privateKeyStr) {
-            console.log("SPARKLE_EDDSA_KEY is empty");
-            process.exit(0);
-          }
-          try {
-            let privateKey;
-            if (privateKeyStr.includes("-----BEGIN")) {
-              privateKey = crypto.createPrivateKey(privateKeyStr);
-            } else {
-              const rawBytes = Buffer.from(privateKeyStr, "base64");
-              const privateKeyRaw = rawBytes.slice(0, 32);
-              const pkcs8Header = Buffer.from("302e020100300506032b657004220420", "hex");
-              const pkcs8Der = Buffer.concat([pkcs8Header, privateKeyRaw]);
-              privateKey = crypto.createPrivateKey({
-                key: pkcs8Der,
-                format: "der",
-                type: "pkcs8"
-              });
-            }
-            const publicKey = crypto.createPublicKey(privateKey);
-            const publicKeyDer = publicKey.export({ format: "der", type: "spki" });
-            const rawPublicKey = publicKeyDer.slice(12);
-            const publicKeyB64 = rawPublicKey.toString("base64");
-            console.log("THE_CORRECT_EDDSA_PUBLIC_KEY=" + publicKeyB64);
-          } catch (e) {
-            console.error("Failed to parse private key:", e);
-          }
-          '
 
       - name: Update appcast.xml and Push
         if: steps.sparkle_sign.outputs.signed == 'true'
