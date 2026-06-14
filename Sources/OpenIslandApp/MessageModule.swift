@@ -57,26 +57,7 @@ final class MessageModule: IslandModule {
     var isAccessibilityTrusted: Bool = AXIsProcessTrusted()
 
     init() {
-        // 提供初始的示例消息，展示排版效果与 Vibe 质感
-        let isChinese = Locale.current.identifier.hasPrefix("zh")
-        messages = [
-            AppMessage(
-                id: UUID(),
-                sender: isChinese ? "产品经理" : "Product Manager",
-                content: isChinese ? "刚才发在飞书的方案，看下是否有问题？" : "Please review the PR and specification doc.",
-                timestamp: Date().addingTimeInterval(-120),
-                app: .lark,
-                isUnread: true
-            ),
-            AppMessage(
-                id: UUID(),
-                sender: isChinese ? "微信好友" : "WeChat Friend",
-                content: isChinese ? "晚上一起干饭不？" : "Do you want to grab dinner tonight?",
-                timestamp: Date().addingTimeInterval(-60),
-                app: .wechat,
-                isUnread: true
-            )
-        ]
+        messages = []
         
         // 初始化时立刻启动系统通知的 Accessibility 监听器
         startSystemNotificationObserver()

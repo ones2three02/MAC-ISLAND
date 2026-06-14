@@ -9,13 +9,11 @@ final class MessageModuleTests: XCTestCase {
     func testMessageModuleInitialState() {
         let module = MessageModule()
         
-        // 初始时有2条引导消息
-        XCTAssertEqual(module.messages.count, 2)
-        XCTAssertTrue(module.messages[0].isUnread)
-        XCTAssertTrue(module.messages[1].isUnread)
+        // 初始时无消息
+        XCTAssertEqual(module.messages.count, 0)
         
-        // 由于存在未读消息，初始优先级应为 .medium
-        XCTAssertEqual(module.priority, .medium)
+        // 由于没有未读消息，初始优先级应为 .low
+        XCTAssertEqual(module.priority, .low)
     }
     
     func testAddMessage() {
@@ -30,19 +28,12 @@ final class MessageModuleTests: XCTestCase {
         XCTAssertEqual(module.messages.first?.app, .slack)
         XCTAssertTrue(module.messages.first?.isUnread ?? false)
         
-        // 优先级依然是 .medium
+        // 优先级升级为 .medium
         XCTAssertEqual(module.priority, .medium)
     }
     
     func testMarkAsRead() {
         let module = MessageModule()
-        
-        // 全部已读
-        module.markAllAsRead()
-        XCTAssertEqual(module.messages.filter(\.isUnread).count, 0)
-        
-        // 当没有未读消息时，优先级降为 .low
-        XCTAssertEqual(module.priority, .low)
         
         // 添加一条未读消息
         module.addMessage(sender: "用户", content: "你好", app: .wechat)
