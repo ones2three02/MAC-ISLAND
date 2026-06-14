@@ -394,17 +394,27 @@ struct IslandPanelView: View {
     /// preferences. AppModel is @Observable so any change to sessions /
     /// preferences re-renders this automatically; UnifiedBars runs its own
     /// TimelineView internally for bar animation.
-    @ViewBuilder
     private func v6ClosedSurface() -> some View {
         let layout: V6ClosedLayout = isExternalDisplayPlacement ? .external : .macbook
         let physicalNotchWidth: CGFloat = targetOverlayScreen?.notchSize.width ?? 180
         let activeModule = model.scheduler.activeModule
         let leftWidth: CGFloat = activeModule?.leftPillWidth ?? 24
         let rightWidth: CGFloat = activeModule?.rightPillWidth ?? 0
+
+        let currentLabel: String? = {
+            if activeModule?.id == "media_control" {
+                if let media = activeModule as? MediaControlModule, !media.title.isEmpty, media.title != "Not Playing", media.title != "No active track" {
+                    return media.title
+                }
+                return nil
+            } else {
+                return layout == .external ? model.islandClosedLabel() : nil
+            }
+        }()
         
-        V6ClosedPill(
+        return V6ClosedPill(
             mode: model.islandClosedMode,
-            label: layout == .external ? model.islandClosedLabel() : nil,
+            label: currentLabel,
             rightSlot: model.islandClosedRightSlotContent(),
             layout: layout,
             height: closedNotchHeight,
