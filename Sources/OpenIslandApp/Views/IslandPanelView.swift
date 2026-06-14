@@ -1716,101 +1716,133 @@ private struct IslandSessionRow: View {
             }
 
             VStack(alignment: .leading, spacing: 3) {
-                if presentation == .list {
-                    HStack(spacing: 5) {
-                        let isDesktopApp = session.id.hasPrefix("desktop_app:")
-                        Image(systemName: isDesktopApp ? "app.window.up.right" : "folder")
-                            .font(.system(size: 10))
-                            .foregroundStyle(.white.opacity(0.35))
-                        
-                        Text(summaryHeadlineText)
-                            .font(.system(size: 11.5, weight: .bold, design: .rounded))
-                            .foregroundStyle(titleColor(for: presence))
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                    }
-                } else {
-                    Text(summaryHeadlineText)
-                        .font(summaryTitleFont)
-                        .foregroundStyle(titleColor(for: presence))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-
                 let isDesktopApp = session.id.hasPrefix("desktop_app:")
                 if isDesktopApp {
-                    HStack(spacing: 5) {
-                        if let quotaText = summaryOverride {
-                            if quotaText == "暂无额度数据" || quotaText == "No usage data" {
-                                telemetryBadge(
-                                    text: quotaText,
-                                    icon: "info.circle",
-                                    textColor: .white.opacity(0.4),
-                                    bgColor: .white.opacity(0.04),
-                                    borderColor: .white.opacity(0.1)
-                                )
-                            } else {
-                                let parts = quotaText.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                                ForEach(parts, id: \.self) { part in
-                                    let toolColor = Color(hex: session.tool.brandColorHex) ?? .blue
-                                    telemetryBadge(
-                                        text: part,
-                                        icon: "chart.bar.fill",
-                                        textColor: toolColor.opacity(0.95),
-                                        bgColor: toolColor.opacity(0.08),
-                                        borderColor: toolColor.opacity(0.2)
-                                    )
+                    HStack(alignment: .center, spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 5) {
+                                Image(systemName: "app.window.up.right")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.white.opacity(0.35))
+                                
+                                Text(summaryHeadlineText)
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .foregroundStyle(titleColor(for: presence))
+                                
+                                Circle()
+                                    .fill(presence == .active ? Color.green : Color.gray)
+                                    .frame(width: 5, height: 5)
+                                    .shadow(color: presence == .active ? Color.green.opacity(0.8) : Color.clear, radius: 2)
+                            }
+                            
+                            if session.id == "desktop_app:antigravity",
+                               let account = AntigravityAccountLoader.loadEmail() {
+                                HStack(spacing: 3.5) {
+                                    Image(systemName: "envelope.fill")
+                                        .font(.system(size: 7.5))
+                                    Text(account)
+                                        .font(.system(size: 9.5, weight: .medium, design: .monospaced))
+                                }
+                                .foregroundStyle(.white.opacity(0.35))
+                            } else if session.id == "desktop_app:codex" {
+                                HStack(spacing: 3.5) {
+                                    Image(systemName: "person.fill")
+                                        .font(.system(size: 7.5))
+                                    Text("Local Account")
+                                        .font(.system(size: 9.5, weight: .medium, design: .rounded))
+                                }
+                                .foregroundStyle(.white.opacity(0.35))
+                            }
+                            
+                            HStack(spacing: 4) {
+                                if let pid = session.pid {
+                                    HStack(spacing: 3) {
+                                        Image(systemName: "cpu")
+                                            .font(.system(size: 7.5))
+                                        Text("PID \(pid)")
+                                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                                    }
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1.5)
+                                    .background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 3))
+                                    .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(.white.opacity(0.05), lineWidth: 0.5))
+                                    .foregroundStyle(.white.opacity(0.55))
+                                }
+                                
+                                if let cpu = session.cpuUsage {
+                                    let (textColor, bgColor, borderColor, icon) = cpuBadgeStyle(cpu: cpu)
+                                    HStack(spacing: 3) {
+                                        Image(systemName: icon)
+                                            .font(.system(size: 7.5))
+                                        Text(String(format: "CPU %.1f%%", cpu))
+                                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                                    }
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 1.5)
+                                    .background(bgColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 3))
+                                    .overlay(RoundedRectangle(cornerRadius: 3).strokeBorder(borderColor.opacity(0.15), lineWidth: 0.5))
+                                    .foregroundStyle(textColor)
                                 }
                             }
                         }
                         
-                        if let pid = session.pid {
-                            telemetryBadge(
-                                text: "PID \(pid)",
-                                icon: "cpu",
-                                textColor: .white.opacity(0.55),
-                                bgColor: .white.opacity(0.04),
-                                borderColor: .white.opacity(0.1)
-                            )
-                        }
-                        
-                        if session.id == "desktop_app:antigravity",
-                           let account = AntigravityAccountLoader.loadEmail() {
-                            telemetryBadge(
-                                text: account,
-                                icon: "envelope",
-                                textColor: .white.opacity(0.55),
-                                bgColor: .white.opacity(0.04),
-                                borderColor: .white.opacity(0.1)
-                            )
-                        }
-                        
-                        if let cpu = session.cpuUsage {
-                            let (textColor, bgColor, borderColor, icon) = cpuBadgeStyle(cpu: cpu)
-                            telemetryBadge(
-                                text: String(format: "CPU %.1f%%", cpu),
-                                icon: icon,
-                                textColor: textColor,
-                                bgColor: bgColor,
-                                borderColor: borderColor
-                            )
+                        if let quotaText = summaryOverride {
+                            if quotaText == "暂无额度数据" || quotaText == "No usage data" {
+                                Text(quotaText)
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(.white.opacity(0.3))
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 3)
+                                    .background(.white.opacity(0.02), in: RoundedRectangle(cornerRadius: 4))
+                            } else {
+                                let brandColor = Color(hex: session.tool.brandColorHex) ?? .blue
+                                let parsed = parseQuota(from: quotaText)
+                                HStack(spacing: 8) {
+                                    ForEach(parsed, id: \.label) { q in
+                                        quotaProgressBar(label: q.label, percentageLeft: q.percentage, brandColor: brandColor)
+                                    }
+                                }
+                            }
                         }
                     }
-                } else if let cpu = session.cpuUsage, cpu >= 90.0 {
-                    HStack(spacing: 4) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .font(.system(size: 9))
-                        Text(String(format: "CPU 异常 (%.0f%%) 可能卡死", cpu))
-                            .font(.system(size: 9.5, weight: .bold))
+                } else {
+                    if presentation == .list {
+                        HStack(spacing: 5) {
+                            let isDesktopApp = session.id.hasPrefix("desktop_app:")
+                            Image(systemName: isDesktopApp ? "app.window.up.right" : "folder")
+                                .font(.system(size: 10))
+                                .foregroundStyle(.white.opacity(0.35))
+                            
+                            Text(summaryHeadlineText)
+                                .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                                .foregroundStyle(titleColor(for: presence))
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                    } else {
+                        Text(summaryHeadlineText)
+                            .font(summaryTitleFont)
+                            .foregroundStyle(titleColor(for: presence))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                     }
-                    .foregroundStyle(.red)
-                } else if showsDetail,
-                   let promptLine = summaryPromptLineText {
-                    Text(promptLine)
-                        .font(.system(size: 10.5, weight: .medium))
-                        .foregroundStyle(summaryPromptColor(for: presence).opacity(0.8))
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                    
+                    if let cpu = session.cpuUsage, cpu >= 90.0 {
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: 9))
+                            Text(String(format: "CPU 异常 (%.0f%%) 可能卡死", cpu))
+                                .font(.system(size: 9.5, weight: .bold))
+                        }
+                        .foregroundStyle(.red)
+                    } else if showsDetail,
+                       let promptLine = summaryPromptLineText {
+                        Text(promptLine)
+                            .font(.system(size: 10.5, weight: .medium))
+                            .foregroundStyle(summaryPromptColor(for: presence).opacity(0.8))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
                 }
             }
 
@@ -1945,6 +1977,66 @@ private struct IslandSessionRow: View {
             .padding(.trailing, sideInset)
             .padding(.bottom, 10)
         }
+    }
+
+    private func parseQuota(from quotaText: String) -> [(label: String, percentage: Double)] {
+        guard quotaText != "暂无额度数据" && quotaText != "No usage data" else {
+            return []
+        }
+        
+        var results: [(label: String, percentage: Double)] = []
+        let parts = quotaText.components(separatedBy: "|").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        for part in parts {
+            let label: String
+            if part.contains("5h") {
+                label = "5h"
+            } else if part.contains("7d") {
+                label = "7d"
+            } else {
+                label = "Quota"
+            }
+            
+            let numbers = part.filter { "0123456789".contains($0) }
+            if let pct = Double(numbers) {
+                results.append((label: label, percentage: pct))
+            }
+        }
+        return results
+    }
+
+    private func quotaProgressBar(label: String, percentageLeft: Double, brandColor: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2.5) {
+            HStack(spacing: 0) {
+                Text(label)
+                    .font(.system(size: 8.5, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.35))
+                Spacer()
+                Text("\(Int(percentageLeft.rounded()))%")
+                    .font(.system(size: 9.5, weight: .bold, design: .monospaced))
+                    .foregroundStyle(percentageLeft <= 20.0 ? Color.red : (percentageLeft <= 50.0 ? Color.orange : brandColor))
+            }
+            
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(.white.opacity(0.05))
+                    .frame(height: 3)
+                
+                Capsule()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                (percentageLeft <= 20.0 ? Color.red : (percentageLeft <= 50.0 ? Color.orange : brandColor)).opacity(0.65),
+                                (percentageLeft <= 20.0 ? Color.red : (percentageLeft <= 50.0 ? Color.orange : brandColor))
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: max(0, min(80, 80 * CGFloat(percentageLeft / 100.0))), height: 3)
+            }
+            .frame(width: 80, height: 3)
+        }
+        .frame(width: 80)
     }
 
     @ViewBuilder
