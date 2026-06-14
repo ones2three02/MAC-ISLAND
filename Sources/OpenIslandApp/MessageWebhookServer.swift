@@ -1,13 +1,13 @@
 import Foundation
 import Network
 
-public final class MessageWebhookServer: @unchecked Sendable {
+final class MessageWebhookServer: @unchecked Sendable {
     private let port: UInt16
     private let onMessageReceived: @Sendable (String, String, AppMessage.MessageAppType) -> Void
     private let listener: NWListener
     private let queue = DispatchQueue(label: "app.openisland.message.webhook")
 
-    public init(port: UInt16, onMessageReceived: @escaping @Sendable (String, String, AppMessage.MessageAppType) -> Void) {
+    init(port: UInt16, onMessageReceived: @escaping @Sendable (String, String, AppMessage.MessageAppType) -> Void) {
         self.port = port
         self.onMessageReceived = onMessageReceived
         
@@ -18,7 +18,7 @@ public final class MessageWebhookServer: @unchecked Sendable {
         self.listener = listener
     }
 
-    public func start() throws {
+    func start() throws {
         listener.stateUpdateHandler = { state in
             switch state {
             case .ready:
@@ -38,7 +38,7 @@ public final class MessageWebhookServer: @unchecked Sendable {
         listener.start(queue: queue)
     }
 
-    public func stop() {
+    func stop() {
         listener.cancel()
     }
 
@@ -56,7 +56,7 @@ public final class MessageWebhookServer: @unchecked Sendable {
             if error != nil || isComplete {
                 connection.cancel()
             } else {
-                // 请求不完整时，继续接收数据
+                // 请求不完整时，继续接收 data
                 self.receiveData(on: connection)
             }
         }

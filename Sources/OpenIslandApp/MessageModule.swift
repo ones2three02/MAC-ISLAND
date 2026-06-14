@@ -2,21 +2,21 @@ import SwiftUI
 import OpenIslandCore
 import Observation
 
-public struct AppMessage: Identifiable, Equatable, Sendable {
-    public let id: UUID
-    public let sender: String
-    public let content: String
-    public let timestamp: Date
-    public let app: MessageAppType
-    public var isUnread: Bool
+struct AppMessage: Identifiable, Equatable, Sendable {
+    let id: UUID
+    let sender: String
+    let content: String
+    let timestamp: Date
+    let app: MessageAppType
+    var isUnread: Bool
 
-    public enum MessageAppType: String, CaseIterable, Codable, Sendable {
+    enum MessageAppType: String, CaseIterable, Codable, Sendable {
         case wechat = "wechat"
         case lark = "lark"
         case slack = "slack"
         case system = "system"
 
-        public var displayName: String {
+        var displayName: String {
             switch self {
             case .wechat: return "微信"
             case .lark: return "飞书"
@@ -25,7 +25,7 @@ public struct AppMessage: Identifiable, Equatable, Sendable {
             }
         }
 
-        public var iconName: String {
+        var iconName: String {
             switch self {
             case .wechat: return "message.fill"
             case .lark: return "message.and.waveform.fill"
@@ -34,7 +34,7 @@ public struct AppMessage: Identifiable, Equatable, Sendable {
             }
         }
 
-        public var brandColor: Color {
+        var brandColor: Color {
             switch self {
             case .wechat: return Color(red: 9/255, green: 187/255, blue: 7/255) // 微信绿
             case .lark: return Color(red: 45/255, green: 120/255, blue: 255/255) // 飞书蓝
@@ -47,13 +47,13 @@ public struct AppMessage: Identifiable, Equatable, Sendable {
 
 @MainActor
 @Observable
-public final class MessageModule: IslandModule {
-    public let id = "message_center"
+final class MessageModule: IslandModule {
+    let id = "message_center"
 
-    public var messages: [AppMessage] = []
+    var messages: [AppMessage] = []
     private var webhookServer: MessageWebhookServer?
 
-    public init() {
+    init() {
         // 提供初始的示例消息，展示排版效果与 Vibe 质感
         let isChinese = Locale.current.identifier.hasPrefix("zh")
         messages = [
@@ -76,7 +76,7 @@ public final class MessageModule: IslandModule {
         ]
     }
 
-    public var priority: IslandModulePriority {
+    var priority: IslandModulePriority {
         let unreadCount = messages.filter(\.isUnread).count
         if unreadCount > 0 {
             return .medium
@@ -85,7 +85,7 @@ public final class MessageModule: IslandModule {
         }
     }
 
-    public func leftPillView() -> AnyView {
+    func leftPillView() -> AnyView {
         let unreads = messages.filter(\.isUnread)
         guard let firstUnread = unreads.first else {
             return AnyView(
@@ -101,7 +101,7 @@ public final class MessageModule: IslandModule {
         )
     }
 
-    public func rightPillView() -> AnyView {
+    func rightPillView() -> AnyView {
         let unreadCount = messages.filter(\.isUnread).count
         if unreadCount > 0 {
             return AnyView(
@@ -119,21 +119,21 @@ public final class MessageModule: IslandModule {
         }
     }
 
-    public func expandedView() -> AnyView {
+    func expandedView() -> AnyView {
         AnyView(
             MessageExpandedView(module: self)
         )
     }
 
-    public func onActivate() {
+    func onActivate() {
         startWebhookServer()
     }
 
-    public func onDeactivate() {
+    func onDeactivate() {
         // 保留消息，以便用户随时查看
     }
 
-    public func addMessage(sender: String, content: String, app: AppMessage.MessageAppType) {
+    func addMessage(sender: String, content: String, app: AppMessage.MessageAppType) {
         let newMessage = AppMessage(
             id: UUID(),
             sender: sender,
@@ -145,23 +145,23 @@ public final class MessageModule: IslandModule {
         messages.insert(newMessage, at: 0)
     }
 
-    public func markAsRead(id: UUID) {
+    func markAsRead(id: UUID) {
         if let index = messages.firstIndex(where: { $0.id == id }) {
             messages[index].isUnread = false
         }
     }
 
-    public func markAllAsRead() {
+    func markAllAsRead() {
         for index in messages.indices {
             messages[index].isUnread = false
         }
     }
 
-    public func deleteMessage(id: UUID) {
+    func deleteMessage(id: UUID) {
         messages.removeAll(where: { $0.id == id })
     }
 
-    public func clearAllMessages() {
+    func clearAllMessages() {
         messages.removeAll()
     }
 
@@ -180,7 +180,7 @@ public final class MessageModule: IslandModule {
         }
     }
 
-    public func stopWebhookServer() {
+    func stopWebhookServer() {
         webhookServer?.stop()
         webhookServer = nil
     }
