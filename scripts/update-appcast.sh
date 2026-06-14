@@ -30,7 +30,7 @@ if [[ ! -f "$appcast" ]]; then
     exit 1
 fi
 
-download_url="https://github.com/ones2three02/MAC-ISLAND/releases/download/v${VERSION}/Open.Island.zip"
+download_url="https://github.com/ones2three02/MAC-ISLAND/releases/download/v${VERSION}/Mac.Island.zip"
 
 # Use Python for reliable XML-adjacent text insertion
 python3 - "$appcast" "$VERSION" "$BUILD_NUMBER" "$ED_SIGNATURE" "$LENGTH" "$PUB_DATE" "$download_url" <<'PYEOF'
