@@ -1232,15 +1232,35 @@ private struct SessionListLivePreviewRow: View {
         VStack(alignment: .leading, spacing: 7) {
             switch item.phase {
             case .approval:
-                Text(lang.t("approval.toolPermissionRequested"))
-                    .font(.system(size: 12.5, weight: .semibold))
-                    .foregroundStyle(V6Palette.paper.opacity(0.86))
-                Text(lang.t("settings.appearance.preview.permissionBody"))
-                    .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(V6Palette.paper.opacity(0.78))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.shield.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(IslandDesignPalette.Status.waitingForApproval)
+                    Text(lang.t("approval.toolPermissionRequested"))
+                        .font(.system(size: 12.5, weight: .semibold))
+                        .foregroundStyle(V6Palette.paper.opacity(0.86))
+                }
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Image(systemName: "terminal")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(V6Palette.paper.opacity(0.45))
+                    
+                    Text(lang.t("settings.appearance.preview.permissionBody"))
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundStyle(V6Palette.paper.opacity(0.85))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color.black.opacity(0.25))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.07), lineWidth: 1)
+                )
             case .answer:
                 Text(lang.t("settings.appearance.preview.pickOrTypeAnswer"))
                     .font(.system(size: 12.5, weight: .semibold))

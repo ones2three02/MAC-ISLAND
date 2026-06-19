@@ -2333,39 +2333,69 @@ private struct IslandSessionRow: View {
     // MARK: - Approval action area
 
     private var approvalActionBody: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(lang.t("approval.toolPermissionRequested"))
-                .font(.system(size: 12.5, weight: .semibold))
-                .foregroundStyle(V6Palette.paper.opacity(0.86))
+        let cleanPath = session.permissionRequest?.affectedPath.trimmedForNotificationCard
+        let commandPreview = session.currentCommandPreviewText?.trimmedForNotificationCard
+        let summaryText = session.permissionRequest?.summary.trimmedForNotificationCard
+        let showPath: Bool = if let cleanPath, !cleanPath.isEmpty {
+            cleanPath != commandPreview && cleanPath != summaryText
+        } else {
+            false
+        }
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(commandPreviewText)
-                    .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(V6Palette.paper.opacity(0.78))
-                    .fixedSize(horizontal: false, vertical: true)
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "exclamationmark.shield.fill")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(IslandDesignPalette.Status.waitingForApproval)
+                Text(lang.t("approval.toolPermissionRequested"))
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(V6Palette.paper.opacity(0.86))
+            }
 
-                if let path = session.permissionRequest?.affectedPath.trimmedForNotificationCard,
-                   !path.isEmpty {
-                    Text(path)
-                        .font(.system(size: 10.5, weight: .medium))
-                        .foregroundStyle(V6Palette.paper.opacity(0.42))
-                        .lineLimit(1)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Image(systemName: "terminal")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(V6Palette.paper.opacity(0.45))
+                        .padding(.top, 1)
+
+                    Text(commandPreviewText)
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundStyle(V6Palette.paper.opacity(0.85))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if showPath, let cleanPath {
+                    HStack(spacing: 4) {
+                        Image(systemName: "folder")
+                            .font(.system(size: 9.5))
+                            .foregroundStyle(V6Palette.paper.opacity(0.3))
+                        Text(cleanPath)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(V6Palette.paper.opacity(0.45))
+                            .lineLimit(1)
+                    }
+                    .padding(.leading, 16)
                 }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
             .frame(maxWidth: .infinity, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
             .background(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(Color.white.opacity(0.045))
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.black.opacity(0.25))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.07), lineWidth: 1)
             )
 
             HStack(spacing: 8) {
                 Button(session.permissionRequest?.secondaryActionTitle ?? lang.t("approval.deny")) { onApprove?(.deny) }
                     .buttonStyle(IslandActionButtonStyle(kind: .secondary, expands: true))
                 Button(session.permissionRequest?.primaryActionTitle ?? lang.t("approval.allowOnce")) { onApprove?(.allowOnce) }
-                    .buttonStyle(IslandActionButtonStyle(kind: .warning, expands: true))
+                    .buttonStyle(IslandActionButtonStyle(kind: .primary, expands: true))
                 if let toolName = session.permissionRequest?.toolName {
                     Button(lang.t("approval.alwaysAllow", toolName)) {
                         let rule = ClaudePermissionRuleValue(toolName: toolName)
@@ -2376,7 +2406,7 @@ private struct IslandSessionRow: View {
                         )
                         onApprove?(.allowWithUpdates([update]))
                     }
-                    .buttonStyle(IslandActionButtonStyle(kind: .primary, expands: true))
+                    .buttonStyle(IslandActionButtonStyle(kind: .warning, expands: true))
                 }
             }
         }
@@ -3211,7 +3241,7 @@ private struct ReplyTextField: NSViewRepresentable {
     }
 }
 
-fileprivate extension String {
+extension String {
     var trimmedForNotificationCard: String {
         trimmingCharacters(in: .whitespacesAndNewlines)
     }

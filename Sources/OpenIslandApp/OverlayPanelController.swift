@@ -17,8 +17,8 @@ final class OverlayPanelController {
     // Content padding top + scroll padding + v8 list header/footer + bottom inset.
     // Rows are now full-width scan rows, so the old inter-card spacing is gone.
     private static let openedContentVerticalInsets: CGFloat = 84
-    private static let notificationMeasuredContentPadding: CGFloat = 8
-    private static let notificationEstimatedVerticalInsets: CGFloat = 36
+    private static let notificationMeasuredContentPadding: CGFloat = 59
+    private static let notificationEstimatedVerticalInsets: CGFloat = 87
     private static let openedEmptyStateHeight: CGFloat = 108
     private static let questionCardBaseHeight: CGFloat = 110
     private static let questionCardMaxHeight: CGFloat = 420
@@ -576,7 +576,15 @@ final class OverlayPanelController {
     private func actionableBodyHeight(for session: AgentSession, model: AppModel) -> CGFloat {
         switch session.phase {
         case .waitingForApproval:
-            return 118
+            let cleanPath = session.permissionRequest?.affectedPath.trimmedForNotificationCard
+            let commandPreview = session.currentCommandPreviewText?.trimmedForNotificationCard
+            let summaryText = session.permissionRequest?.summary.trimmedForNotificationCard
+            let showPath = if let cleanPath, !cleanPath.isEmpty {
+                cleanPath != commandPreview && cleanPath != summaryText
+            } else {
+                false
+            }
+            return showPath ? 146 : 126
         case .waitingForAnswer:
             return questionCardHeight(for: session.questionPrompt) - 44
         case .completed:
