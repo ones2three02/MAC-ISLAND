@@ -124,11 +124,11 @@ class IslandScheduler {
         var target = candidate ?? modules.first
         let targetBeforeLock = target?.id
         
-        // 如果当前有用户锁定的模块，且最高候选模块的优先级尚未达到 .high (日常普通状态)
+        // 如果当前有用户锁定的模块，且最高候选模块的优先级尚未达到 .critical (需要用户干预的严重状态)
         if let lockedId = userLockedModuleId,
            let lockedModule = modules.first(where: { $0.id == lockedId }),
            let highestPriority = target?.priority,
-           highestPriority < .high {
+           highestPriority < .critical {
             target = lockedModule
         }
         
