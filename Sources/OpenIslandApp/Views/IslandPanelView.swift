@@ -51,7 +51,7 @@ private struct AutoHeightScrollView<Content: View>: View {
 
 extension AgentSession {
     /// Estimated row height matching `IslandSessionRow` layout for viewport sizing.
-    func estimatedIslandRowHeight(at date: Date) -> CGFloat {
+    func estimatedIslandRowHeight(at date: Date, isActionable: Bool = false) -> CGFloat {
         let presence = islandPresence(at: date)
         // v8 list rows are full-width scan rows, not rounded cards.
         // Base: vertical padding (22) + headline (~17) + divider rounding.
@@ -62,7 +62,15 @@ extension AgentSession {
         if isDesktopApp {
             // Desktop apps display token/quota details under the headline
             height += 28
-        } else if spotlightPromptLineText != nil {
+            return height
+        }
+
+        // 非桌面应用在列表模式下，如果不是 actionable，则默认折叠（只有 40 基础高度）
+        guard isActionable else {
+            return height
+        }
+
+        if spotlightPromptLineText != nil {
             height += 17
         }
 
@@ -1608,7 +1616,14 @@ private struct IslandSessionRow: View {
             at: referenceDate,
             threshold: completedStaleThreshold
         )
-        let defaultShowsDetail = !isStaleCompleted && (rawPresence != .inactive || isActionable)
+        let defaultShowsDetail: Bool
+        if presentation == .notification {
+            defaultShowsDetail = !isStaleCompleted && (rawPresence != .inactive || isActionable)
+        } else {
+            // 在列表模式下，非 actionable（例如不需要用户授权或输入）的会话默认折叠不展示具体 agent 细节，保持界面整洁。
+            // 只有当有需要用户关注的行动（isActionable == true）时才默认展开。
+            defaultShowsDetail = isActionable
+        }
         let showsDetail = detailOverride ?? defaultShowsDetail
         let presence = isStaleCompleted
             ? .inactive

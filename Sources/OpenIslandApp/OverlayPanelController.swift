@@ -532,7 +532,8 @@ final class OverlayPanelController {
                 // initial window is close to the final size.
                 if let actionableID,
                    let session = model.state.session(id: actionableID) {
-                    let rowHeight = session.estimatedIslandRowHeight(at: now)
+                    // notification mode 只有 actionable 才会弹出卡片展示，因此直接传入 isActionable: true
+                    let rowHeight = session.estimatedIslandRowHeight(at: now, isActionable: true)
                     let bodyHeight = actionableBodyHeight(for: session, model: model)
                     return rowHeight + bodyHeight + Self.notificationEstimatedVerticalInsets
                 }
@@ -540,11 +541,12 @@ final class OverlayPanelController {
             }
 
             let rowHeights = visibleSessions.map { session -> CGFloat in
+                let sessionIsActionable = session.phase.requiresAttention || session.id == actionableID
                 if session.id == actionableID {
-                    return session.estimatedIslandRowHeight(at: now)
+                    return session.estimatedIslandRowHeight(at: now, isActionable: sessionIsActionable)
                         + actionableBodyHeight(for: session, model: model)
                 }
-                return session.estimatedIslandRowHeight(at: now)
+                return session.estimatedIslandRowHeight(at: now, isActionable: sessionIsActionable)
             }
 
             let rowsHeight = rowHeights.reduce(CGFloat.zero, +)
