@@ -555,7 +555,11 @@ final class AppModel {
 
 
     @ObservationIgnored
-    var harnessRuntimeMonitor: HarnessRuntimeMonitor?
+    var harnessRuntimeMonitor: HarnessRuntimeMonitor? {
+        didSet {
+            overlay.harnessRuntimeMonitor = harnessRuntimeMonitor
+        }
+    }
 
 
     @ObservationIgnored

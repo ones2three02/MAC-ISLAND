@@ -31,6 +31,7 @@ final class OpenIslandAppDelegate: NSObject, NSApplicationDelegate {
             harnessRuntimeMonitor.recordMilestone("modelStarted")
 
             if let scenario = harnessLaunchConfiguration.scenario {
+                model.islandRightSlot = .count
                 model.loadDebugSnapshot(
                     scenario.snapshot(),
                     presentOverlay: harnessLaunchConfiguration.presentOverlay
@@ -77,7 +78,9 @@ final class OpenIslandAppDelegate: NSObject, NSApplicationDelegate {
 
     private static func hideAllAppWindows() {
         for window in NSApp.windows {
-            window.orderOut(nil)
+            if !String(describing: type(of: window)).contains("NotchPanel") {
+                window.orderOut(nil)
+            }
         }
     }
 

@@ -163,7 +163,7 @@ enum HarnessArtifactRecorder {
             liveSessionCount: model.liveSessionCount,
             attentionCount: model.liveAttentionCount,
             selectedSessionID: model.selectedSessionID,
-            islandSurface: surfaceDescription(model.islandSurface),
+            islandSurface: surfaceDescription(model.islandSurface, model: model),
             notchStatus: notchStatusDescription(model.notchStatus),
             runtime: runtimeArtifacts,
             sessions: model.sessions.map {
@@ -269,12 +269,24 @@ enum HarnessArtifactRecorder {
         )
     }
 
-    private static func surfaceDescription(_ surface: IslandSurface) -> String {
+    private static func surfaceDescription(_ surface: IslandSurface, model: AppModel) -> String {
         switch surface {
         case .sessionList(actionableSessionID: nil):
-            "sessionList"
+            return "sessionList"
         case let .sessionList(actionableSessionID: sessionID?):
-            "sessionList:actionable(\(sessionID))"
+            if let session = model.sessions.first(where: { $0.id == sessionID }) {
+                switch session.phase {
+                case .waitingForApproval:
+                    return "approvalCard:\(sessionID)"
+                case .waitingForAnswer:
+                    return "questionCard:\(sessionID)"
+                case .completed:
+                    return "completionCard:\(sessionID)"
+                case .running:
+                    break
+                }
+            }
+            return "sessionList:actionable(\(sessionID))"
         }
     }
 
