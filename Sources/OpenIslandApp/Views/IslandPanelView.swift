@@ -1622,7 +1622,7 @@ private struct IslandSessionRow: View {
 
                 if shouldShowEmbeddedDetailBody {
                     embeddedDetailBody
-                        .padding(.leading, detailLeadingInset)
+                        .padding(.leading, presentation == .notification ? detailLeadingInset : 12)
                         .padding(.trailing, presentation == .notification ? sideInset : 12)
                         .padding(.bottom, 13)
                 }
@@ -1814,12 +1814,14 @@ private struct IslandSessionRow: View {
                     if presentation == .list {
                         HStack(spacing: 5) {
                             let isDesktopApp = session.id.hasPrefix("desktop_app:")
-                            Image(systemName: isDesktopApp ? "app.window.up.right" : "folder")
-                                .font(.system(size: 10))
-                                .foregroundStyle(.white.opacity(0.35))
+                            if isDesktopApp {
+                                Image(systemName: "app.window.up.right")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.white.opacity(0.35))
+                            }
                             
                             Text(summaryHeadlineText)
-                                .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
                                 .foregroundStyle(titleColor(for: presence))
                                 .lineLimit(1)
                                 .truncationMode(.tail)
@@ -2558,7 +2560,15 @@ private struct IslandSessionRow: View {
         }
 
         let summary = session.summary.trimmedForNotificationCard
-        return summary.isEmpty ? nil : summary
+        guard !summary.isEmpty else { return nil }
+        
+        let lowercaseSummary = summary.lowercased().replacingOccurrences(of: " ", with: "")
+        let genericWords: Set<String> = ["running", "completed", "idle", "pending", "waitingforapproval", "waitingforanswer", "done"]
+        if genericWords.contains(lowercaseSummary) {
+            return nil
+        }
+        
+        return summary
     }
 
     private func subagentElapsed(since start: Date, at now: Date) -> String {
