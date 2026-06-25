@@ -223,7 +223,8 @@ struct IslandPanelView: View {
                 }
             } else {
                 showingContent = false
-                model.scheduler.userLockedModuleId = nil
+                // Keep the user-locked module active so it doesn't automatically revert to other modules (e.g., media control) upon collapse
+                // model.scheduler.userLockedModuleId = nil
             }
         }
     }
