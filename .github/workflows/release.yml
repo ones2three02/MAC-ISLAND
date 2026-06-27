@@ -89,7 +89,7 @@ jobs:
           OPEN_ISLAND_APP_NAME: "Mac Island"
           OPEN_ISLAND_BUNDLE_ID: "app.openisland.OpenIsland"
           OPEN_ISLAND_VERSION: ${{ steps.version.outputs.version }}
-          OPEN_ISLAND_BUILD_NUMBER: ${{ github.run_number }}
+          OPEN_ISLAND_BUILD_NUMBER: ${{ github.run_number + 100 }}
           OPEN_ISLAND_SIGN_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           OPEN_ISLAND_EDDSA_PUBLIC_KEY: "KzDAoTk37ThSgAbu3vc2om09NIAbsrIzNGghQ46uAaU="
           OPEN_ISLAND_UNIVERSAL: "true"
