@@ -205,7 +205,7 @@ jobs:
         run: |
           zsh scripts/update-appcast.sh \
             "${{ steps.version.outputs.version }}" \
-            "${{ github.run_number }}" \
+            "${{ steps.build_number.outputs.build_number }}" \
             "${{ steps.sparkle_sign.outputs.ed_signature }}" \
             "${{ steps.sparkle_sign.outputs.length }}"
           cat appcast.xml
