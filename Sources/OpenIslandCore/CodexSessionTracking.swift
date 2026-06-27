@@ -312,10 +312,12 @@ public final class CodexRolloutDiscovery: @unchecked Sendable {
 
         var recordsByID: [String: CodexTrackedSessionRecord] = [:]
         for candidate in recentCandidates {
-            guard let record = discoverRecord(
-                fileURL: candidate.fileURL,
-                modifiedAt: candidate.modifiedAt
-            ) else {
+            guard let record = autoreleasepool(invoking: {
+                discoverRecord(
+                    fileURL: candidate.fileURL,
+                    modifiedAt: candidate.modifiedAt
+                )
+            }) else {
                 continue
             }
 
@@ -358,10 +360,12 @@ public final class CodexRolloutDiscovery: @unchecked Sendable {
         while let chunk = try? fileHandle.read(upToCount: Self.streamingChunkSize),
               !chunk.isEmpty {
             buffer.append(chunk)
-            for line in extractCompleteLines(from: &buffer) {
-                CodexRolloutReducer.apply(line: line, to: &snapshot)
-                if sessionMeta == nil {
-                    sessionMeta = parseSessionMeta(fromLine: line)
+            autoreleasepool {
+                for line in extractCompleteLines(from: &buffer) {
+                    CodexRolloutReducer.apply(line: line, to: &snapshot)
+                    if sessionMeta == nil {
+                        sessionMeta = parseSessionMeta(fromLine: line)
+                    }
                 }
             }
         }

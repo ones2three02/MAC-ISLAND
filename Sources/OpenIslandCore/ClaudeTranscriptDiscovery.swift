@@ -62,7 +62,9 @@ public final class ClaudeTranscriptDiscovery: @unchecked Sendable {
             .prefix(maxFiles)
 
         return sortedCandidates.compactMap { candidate in
-            parseSession(at: candidate.fileURL, fallbackUpdatedAt: candidate.modifiedAt)
+            autoreleasepool {
+                parseSession(at: candidate.fileURL, fallbackUpdatedAt: candidate.modifiedAt)
+            }
         }
     }
 
@@ -163,8 +165,10 @@ public final class ClaudeTranscriptDiscovery: @unchecked Sendable {
         while let chunk = try? fileHandle.read(upToCount: Self.streamingChunkSize),
               !chunk.isEmpty {
             buffer.append(chunk)
-            for line in extractCompleteLines(from: &buffer) {
-                processLine(line)
+            autoreleasepool {
+                for line in extractCompleteLines(from: &buffer) {
+                    processLine(line)
+                }
             }
         }
 
