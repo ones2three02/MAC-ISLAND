@@ -8,6 +8,19 @@
         <!-- Items are added by the release workflow. See docs/releasing.md. -->
         <item>
             <title>Version 1.4.3</title>
+            <sparkle:version>32</sparkle:version>
+            <sparkle:shortVersionString>1.4.3</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <pubDate>Sat, 27 Jun 2026 15:36:51 +0000</pubDate>
+            <enclosure
+                url="https://github.com/ones2three02/MAC-ISLAND/releases/download/v1.4.3/Mac.Island.zip"
+                type="application/octet-stream"
+                sparkle:edSignature="fSQVGfIUe1s66K0pCgmAYnlCHDLoUTC+s2rXT078aVbO3M4djKhWeGFvPzAv5eENU0/m5sONa6lscFkCBrTJCA=="
+                length="13319086"
+            />
+        </item>
+        <item>
+            <title>Version 1.4.3</title>
             <sparkle:version>28</sparkle:version>
             <sparkle:shortVersionString>1.4.3</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
